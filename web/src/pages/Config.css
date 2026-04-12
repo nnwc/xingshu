@@ -1,0 +1,100 @@
+.config-page-card {
+  border-radius: 18px;
+  border: 1px solid var(--color-border-2);
+  box-shadow: 0 14px 36px rgba(15, 23, 42, 0.06);
+}
+
+.config-page-card .arco-card-body {
+  padding: 0;
+}
+
+.config-page-hero {
+  margin-bottom: 18px;
+}
+
+.config-page-description {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.5;
+  color: var(--xingshu-desc-badge-text);
+  background: var(--xingshu-desc-badge-bg);
+}
+
+.config-tab-pane {
+  padding: 16px 24px;
+}
+
+.config-info-card {
+  border-radius: 14px;
+  border: 1px solid var(--color-border-2);
+}
+
+.config-table .arco-table-th {
+  background: var(--color-fill-2);
+}
+
+.config-table .arco-table-th,
+.config-table .arco-table-td {
+  border-color: var(--color-border-2);
+}
+
+.config-system-log-block {
+  background: var(--xingshu-code-bg);
+  border: 1px solid color-mix(in srgb, var(--xingshu-code-muted) 24%, var(--color-border));
+}
+
+.config-empty-log-state {
+  color: var(--xingshu-code-muted);
+}
+
+body[arco-theme='dark'] .config-page-card {
+  background: linear-gradient(180deg, rgba(31, 35, 42, 0.98) 0%, rgba(26, 29, 35, 0.98) 100%);
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.28);
+}
+
+body[arco-theme='dark'] .config-page-card .arco-tabs-header-nav::before,
+body[arco-theme='dark'] .config-page-card .arco-divider {
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+body[arco-theme='dark'] .config-info-card {
+  background: rgba(255, 255, 255, 0.02);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+body[arco-theme='dark'] .config-table .arco-table-th {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--color-text-1);
+}
+
+body[arco-theme='dark'] .config-table .arco-table-tr,
+body[arco-theme='dark'] .config-table .arco-table-td {
+  background: transparent;
+}
+
+body[arco-theme='dark'] .config-table .arco-table-th,
+body[arco-theme='dark'] .config-table .arco-table-td {
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+body[arco-theme='dark'] .config-table .arco-table-tr:hover .arco-table-td {
+  background: rgba(255, 255, 255, 0.025);
+}
+
+@media (max-width: 768px) {
+  .config-page-hero {
+    margin-bottom: var(--xingshu-mobile-block-gap);
+  }
+
+  .config-page-description {
+    padding: 6px 10px;
+    border-radius: 10px;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+}

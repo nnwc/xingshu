@@ -1,0 +1,86 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background: var(--color-bg-1);
+  color: var(--color-text-1);
+  transition: background 0.25s ease, color 0.25s ease;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+
+#root {
+  width: 100%;
+  height: 100vh;
+}
+
+:root {
+  --xingshu-scrollbar-track: rgba(15, 23, 42, 0.035);
+  --xingshu-scrollbar-thumb: rgba(99, 102, 241, 0.26);
+  --xingshu-scrollbar-thumb-hover: rgba(99, 102, 241, 0.42);
+  --xingshu-code-bg: #f7f8fc;
+  --xingshu-code-text: #243041;
+  --xingshu-code-muted: #86909c;
+  --xingshu-desc-badge-bg: rgba(139, 92, 246, 0.10);
+  --xingshu-desc-badge-text: #6d4fc2;
+  --xingshu-mobile-block-gap: 12px;
+  --xingshu-mobile-section-gap: 12px;
+  --xingshu-mobile-card-radius: 14px;
+  --xingshu-mobile-card-padding: 14px;
+}
+
+body[arco-theme='dark'] {
+  --xingshu-scrollbar-track: rgba(255, 255, 255, 0.04);
+  --xingshu-scrollbar-thumb: rgba(167, 139, 250, 0.28);
+  --xingshu-scrollbar-thumb-hover: rgba(125, 211, 252, 0.40);
+  --xingshu-code-bg: #1b2230;
+  --xingshu-code-text: #d4dbe6;
+  --xingshu-code-muted: #93a1b5;
+  --xingshu-desc-badge-bg: rgba(167, 139, 250, 0.14);
+  --xingshu-desc-badge-text: #c7b6ff;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--xingshu-scrollbar-thumb) var(--xingshu-scrollbar-track);
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: var(--xingshu-scrollbar-track);
+  border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--xingshu-scrollbar-thumb);
+  border-radius: 999px;
+  border: 1.5px solid transparent;
+  background-clip: padding-box;
+  transition: background 0.2s ease;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--xingshu-scrollbar-thumb-hover);
+  border: 1.5px solid transparent;
+  background-clip: padding-box;
+}
+
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}

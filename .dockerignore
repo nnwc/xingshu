@@ -1,0 +1,33 @@
+# Rust
+target/
+**/*.rs.bk
+*.pdb
+
+# Node.js
+web/node_modules/
+web/dist/
+web/.vite/
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.vscode/
+.idea/
+
+# 数据文件
+data/
+
+# 文档
+*.md
+docs/
+
+# 截图
+screenshot/
+
+# 其他
+.env
+.DS_Store
+Dockerfile
+.dockerignore

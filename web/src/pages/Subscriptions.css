@@ -1,0 +1,99 @@
+.subscriptions-page-card {
+  border-radius: 18px;
+  border: 1px solid var(--color-border-2);
+  box-shadow: 0 14px 36px rgba(15, 23, 42, 0.06);
+}
+
+.subscriptions-page-hero {
+  margin-bottom: 18px;
+}
+
+.subscriptions-card-extra {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.subscriptions-page-description {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.5;
+  color: var(--xingshu-desc-badge-text);
+  background: var(--xingshu-desc-badge-bg);
+}
+
+.subscriptions-table {
+  overflow: hidden;
+  border: 1px solid var(--color-border-2);
+  border-radius: 14px;
+}
+
+.subscriptions-table .arco-table-th {
+  background: var(--color-fill-2);
+}
+
+.subscriptions-table .arco-table-th,
+.subscriptions-table .arco-table-td {
+  border-color: var(--color-border-2);
+}
+
+.subscriptions-log-block {
+  background: var(--xingshu-code-bg);
+  border: 1px solid color-mix(in srgb, var(--xingshu-code-muted) 24%, var(--color-border));
+  font-family: Consolas, Monaco, 'Courier New', monospace;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+body[arco-theme='dark'] .subscriptions-page-card {
+  background: linear-gradient(180deg, rgba(31, 35, 42, 0.98) 0%, rgba(26, 29, 35, 0.98) 100%);
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.28);
+}
+
+body[arco-theme='dark'] .subscriptions-page-card .arco-card-body {
+  background: transparent;
+}
+
+body[arco-theme='dark'] .subscriptions-table {
+  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.015);
+}
+
+body[arco-theme='dark'] .subscriptions-table .arco-table-th {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--color-text-1);
+}
+
+body[arco-theme='dark'] .subscriptions-table .arco-table-th,
+body[arco-theme='dark'] .subscriptions-table .arco-table-td {
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+body[arco-theme='dark'] .subscriptions-table .arco-table-tr,
+body[arco-theme='dark'] .subscriptions-table .arco-table-td,
+body[arco-theme='dark'] .subscriptions-table .arco-table-empty {
+  background: transparent;
+}
+
+body[arco-theme='dark'] .subscriptions-table .arco-table-tr:hover .arco-table-td {
+  background: rgba(255, 255, 255, 0.025);
+}
+
+@media (max-width: 768px) {
+  .subscriptions-page-hero {
+    margin-bottom: var(--xingshu-mobile-block-gap);
+  }
+
+  .subscriptions-page-description {
+    padding: 6px 10px;
+    border-radius: 10px;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+}
