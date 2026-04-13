@@ -73,6 +73,7 @@ hmac = "0.12"
 sha2 = "0.10"
 base64 = "0.22"
 urlencoding = "2.1"
+regex = "1"
 
 # 终端 (仅非 Android 平台)
 [target.'cfg(not(target_os = "android"))'.dependencies]

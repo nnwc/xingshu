@@ -364,6 +364,51 @@ impl ConfigService {
         })
     }
 
+    pub async fn start_microwarp(&self) -> Result<String> {
+        let config = self.get_microwarp_config().await?;
+        let container_name = if config.container_name.trim().is_empty() {
+            "microwarp"
+        } else {
+            config.container_name.trim()
+        };
+
+        let output = Command::new(DOCKER_BIN)
+            .args(["start", container_name])
+            .output()?;
+
+        if !output.status.success() {
+            return Err(anyhow!(
+                "启动 MicroWARP 容器失败: {}",
+                String::from_utf8_lossy(&output.stderr)
+            ));
+        }
+
+        Ok(format!("MicroWARP 容器 {} 已启动", container_name))
+    }
+
+    pub async fn stop_microwarp(&self) -> Result<String> {
+        let config = self.get_microwarp_config().await?;
+        let container_name = if config.container_name.trim().is_empty() {
+            "microwarp"
+        } else {
+            config.container_name.trim()
+        };
+
+        let output = Command::new(DOCKER_BIN)
+            .args(["stop", container_name])
+            .output()?;
+
+        if !output.status.success() {
+            return Err(anyhow!(
+                "停止 MicroWARP 容器失败: {}",
+                String::from_utf8_lossy(&output.stderr)
+            ));
+        }
+
+        Ok(format!("MicroWARP 容器 {} 已停止", container_name))
+    }
+
+
     pub async fn switch_microwarp_ip(&self) -> Result<String> {
         let config = self.get_microwarp_config().await?;
         if !config.enabled {
@@ -425,7 +470,6 @@ impl ConfigService {
         })
     }
 
-    // 获取自动备份配置
     pub async fn get_auto_backup_config(&self) -> Result<AutoBackupConfig> {
         if let Some(config) = self.get_by_key("auto_backup").await? {
             let backup_config: AutoBackupConfig = serde_json::from_str(&config.value)?;

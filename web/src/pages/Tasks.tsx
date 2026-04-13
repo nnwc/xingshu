@@ -546,6 +546,8 @@ const Tasks: React.FC = () => {
         values.microwarp_switch_ip_on_run = false;
       }
 
+      values.env = null;
+
       if (editingTask) {
         await taskApi.update(editingTask.id, values);
         Message.success('更新成功');
@@ -865,19 +867,13 @@ const Tasks: React.FC = () => {
     },
     {
       title: '操作',
-      width: isMobile ? 100 : 180,
+      width: isMobile ? 180 : 260,
       fixed: 'right' as const,
       render: (_: any, record: Task) => {
         const isRunning = runningTasks.has(record.id);
 
         const droplist = (
           <Menu>
-            <Menu.Item key="edit" onClick={() => handleEdit(record)} disabled={isRunning}>
-              <Space>
-                <IconEdit />
-                编辑
-              </Space>
-            </Menu.Item>
             {webhookToken && (
               <Menu.Item key="webhook" onClick={() => showWebhookUrl(record.id)}>
                 <Space>
@@ -886,48 +882,45 @@ const Tasks: React.FC = () => {
                 </Space>
               </Menu.Item>
             )}
-            <Menu.Item key="delete" onClick={() => {
-              Modal.confirm({
-                title: '确定删除此任务吗？',
-                onOk: () => handleDelete(record.id),
-              });
-            }} disabled={isRunning}>
-              <Space>
-                <IconDelete />
-                删除
-              </Space>
-            </Menu.Item>
           </Menu>
         );
 
         return (
-          <Space>
-            <Space size="mini">
+          <div className="tasks-action-grid">
+            <Button
+              type="text"
+              size="small"
+              icon={<IconPlayArrow />}
+              onClick={() => handleRun(record.id)}
+              disabled={isRunning}
+            >
+              {!isMobile && '执行'}
+            </Button>
+            {isRunning ? (
+              <Popconfirm
+                title="确定终止此任务吗？"
+                onOk={() => handleKill(record.id)}
+              >
+                <Button
+                  type="text"
+                  size="small"
+                  status="warning"
+                  icon={<IconStop />}
+                >
+                  {!isMobile && '终止'}
+                </Button>
+              </Popconfirm>
+            ) : (
               <Button
                 type="text"
                 size="small"
-                icon={<IconPlayArrow />}
-                onClick={() => handleRun(record.id)}
+                icon={<IconEdit />}
+                onClick={() => handleEdit(record)}
                 disabled={isRunning}
               >
-                {!isMobile && '执行'}
+                {!isMobile && '编辑'}
               </Button>
-              {isRunning && (
-                <Popconfirm
-                  title="确定终止此任务吗？"
-                  onOk={() => handleKill(record.id)}
-                >
-                  <Button
-                    type="text"
-                    size="small"
-                    status="warning"
-                    icon={<IconStop />}
-                  >
-                    {!isMobile && '终止'}
-                  </Button>
-                </Popconfirm>
-              )}
-            </Space>
+            )}
             <Button
               type="text"
               size="small"
@@ -936,10 +929,29 @@ const Tasks: React.FC = () => {
             >
               {!isMobile && '日志'}
             </Button>
-            <Dropdown droplist={droplist} position="bl">
-              <Button type="text" size="small" icon={<IconMore />} />
-            </Dropdown>
-          </Space>
+            {isRunning ? (
+              <Button type="text" size="small" icon={<IconMore />} disabled />
+            ) : (
+              <Popconfirm
+                title="确定删除此任务吗？"
+                onOk={() => handleDelete(record.id)}
+              >
+                <Button
+                  type="text"
+                  size="small"
+                  status="danger"
+                  icon={<IconDelete />}
+                >
+                  {!isMobile && '删除'}
+                </Button>
+              </Popconfirm>
+            )}
+            {webhookToken && (
+              <Dropdown droplist={droplist} position="bl">
+                <Button type="text" size="small" icon={<IconMore />} className="tasks-action-more" />
+              </Dropdown>
+            )}
+          </div>
         );
       },
     },
@@ -1085,18 +1097,6 @@ const Tasks: React.FC = () => {
             管理分组
           </Button>
         </div>
-        <div className="tasks-batch-toolbar">
-          <Checkbox checked={allSelectableChecked} indeterminate={selectedTaskIds.length > 0 && !allSelectableChecked} onChange={toggleSelectAll}>
-            全选
-          </Checkbox>
-          <Space wrap>
-            <Button size="small" onClick={() => handleBatchSetEnabled(true)} disabled={selectedTaskIds.length === 0}>启用</Button>
-            <Button size="small" onClick={() => handleBatchSetEnabled(false)} disabled={selectedTaskIds.length === 0}>禁用</Button>
-            <Button size="small" status="danger" onClick={() => {
-              Modal.confirm({ title: `确定删除已选中的 ${selectedTaskIds.length} 个任务吗？`, onOk: handleBatchDelete });
-            }} disabled={selectedTaskIds.length === 0}>删除</Button>
-          </Space>
-        </div>
         <div className="tasks-group-header">
           <div className="tasks-group-tabs tasks-group-tabs-primary">
             <span
@@ -1123,6 +1123,7 @@ const Tasks: React.FC = () => {
         {renderTabContent()}
 
       <Modal
+        className="tasks-editor-modal"
         title={editingTask ? '编辑任务' : '新建任务'}
         visible={visible}
         onOk={handleSubmit}
@@ -1349,11 +1350,19 @@ const Tasks: React.FC = () => {
                       </Col>
                       <Col xs={24} md={12}>
                         <FormItem
-                          label="当前脚本拆分符"
+                          label="当前脚本拆分规则"
                           field="account_split_delimiter"
-                          extra={`这个脚本可以单独写自己的拆分符；留空时才使用系统默认拆分符（当前默认：${defaultAccountSplitDelimiter || '未设置'}）。支持普通字符和特殊字符，例如 @、|、#、&、#&。`}
+                          extra={
+                            <div style={{ lineHeight: 1.7 }}>
+                              <div>这个脚本可以单独写自己的拆分规则；留空时才使用系统默认规则（当前默认：{defaultAccountSplitDelimiter || '未设置'}）。</div>
+                              <div>支持单个分隔符、多分隔符（如 @|#|&）、多字符分隔符（如 #&），也支持 regex: 正则表达式。</div>
+                              <div style={{ marginTop: 6 }}>
+                                示例：1）a@b@c → @；2）a#b&c → #|&；3）{'{1#2}&{2#3}'} → &；4）正则写法 → regex:[#&]
+                              </div>
+                            </div>
+                          }
                         >
-                          <Input placeholder="例如 @ 或 | 或 # 或 & 或 #&；留空则走系统默认" />
+                          <Input placeholder="示例：@ / #|& / #& / regex:[#&] / 处理 {1#2}&{2#3} 时填 &" />
                         </FormItem>
                       </Col>
                     </Row>
@@ -1399,7 +1408,7 @@ const Tasks: React.FC = () => {
               <Form.Item noStyle shouldUpdate>
                 {(values) => values.notify_enabled ? (
                   <>
-                    <Card bordered={false} style={{ marginBottom: 16, background: 'var(--color-fill-2)' }}>
+                    <Card bordered={false} className="tasks-notify-info-card" style={{ marginBottom: 16 }}>
                       <Space direction="vertical" size={4} style={{ width: '100%' }}>
                         <Typography.Text style={{ fontWeight: 600 }}>通知规则</Typography.Text>
                         <Typography.Text type="secondary">
@@ -1484,7 +1493,7 @@ const Tasks: React.FC = () => {
                     </Row>
                   </>
                 ) : (
-                  <Card bordered={false} style={{ background: 'var(--color-fill-2)' }}>
+                  <Card bordered={false} className="tasks-notify-info-card">
                     <Typography.Text type="secondary">
                       开启后可为当前任务单独指定推送渠道、通知类型，以及日志附带策略。
                     </Typography.Text>
@@ -1525,20 +1534,6 @@ const Tasks: React.FC = () => {
                 <Input.TextArea
                   placeholder="例如: rm -f /tmp/*.tmp"
                   autoSize={{ minRows: 1, maxRows: 5 }}
-                  style={{ fontFamily: 'monospace' }}
-                />
-              </FormItem>
-
-              <Divider />
-
-              <FormItem
-                label="环境变量"
-                field="env"
-                extra="JSON格式，例如: {&quot;API_KEY&quot;: &quot;xxx&quot;, &quot;DEBUG&quot;: &quot;true&quot;}"
-              >
-                <Input.TextArea
-                  placeholder='{"KEY": "value"}'
-                  rows={4}
                   style={{ fontFamily: 'monospace' }}
                 />
               </FormItem>
@@ -1612,7 +1607,7 @@ const Tasks: React.FC = () => {
         visible={groupManageVisible}
         onCancel={() => setGroupManageVisible(false)}
         footer={null}
-        style={{ width: '90%', maxWidth: 600 }}
+        style={{ width: isMobile ? '96%' : '90%', maxWidth: 600, top: isMobile ? 12 : undefined }}
       >
         <div style={{ marginBottom: 16 }}>
           <Button type="primary" icon={<IconPlus />} onClick={() => {
@@ -1623,65 +1618,93 @@ const Tasks: React.FC = () => {
             新建分组
           </Button>
         </div>
-        <Table
-          columns={[
-            {
-              title: '排序',
-              width: 120,
-              render: (_: any, __: TaskGroup, index: number) => (
-                <Space size="mini">
-                  <Button type="text" size="mini" disabled={index === 0} onClick={() => handleMoveGroup(index, 'up')}>
-                    上移
-                  </Button>
-                  <Button type="text" size="mini" disabled={index === groups.length - 1} onClick={() => handleMoveGroup(index, 'down')}>
-                    下移
-                  </Button>
+        {isMobile ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {groups.map((record, index) => (
+              <Card key={record.id} size="small" bordered>
+                <Space direction="vertical" size={10} style={{ width: '100%' }}>
+                  <div>
+                    <Typography.Text bold>{record.name}</Typography.Text>
+                    {record.description ? (
+                      <div style={{ marginTop: 4, color: 'var(--color-text-3)', fontSize: 12 }}>{record.description}</div>
+                    ) : null}
+                    <div style={{ marginTop: 6, color: 'var(--color-text-3)', fontSize: 12 }}>
+                      创建时间：{new Date(record.created_at).toLocaleString('zh-CN')}
+                    </div>
+                  </div>
+                  <Space wrap>
+                    <Button type="outline" size="small" disabled={index === 0} onClick={() => handleMoveGroup(index, 'up')}>上移</Button>
+                    <Button type="outline" size="small" disabled={index === groups.length - 1} onClick={() => handleMoveGroup(index, 'down')}>下移</Button>
+                    <Button type="outline" size="small" icon={<IconEdit />} onClick={() => handleEditGroup(record)}>编辑</Button>
+                    <Popconfirm title="确定删除此分组吗？" onOk={() => handleDeleteGroup(record.id)}>
+                      <Button type="outline" size="small" status="danger" icon={<IconDelete />}>删除</Button>
+                    </Popconfirm>
+                  </Space>
                 </Space>
-              ),
-            },
-            {
-              title: '分组名称',
-              dataIndex: 'name',
-            },
-            {
-              title: '描述',
-              dataIndex: 'description',
-            },
-            {
-              title: '创建时间',
-              dataIndex: 'created_at',
-              render: (time: string) => new Date(time).toLocaleString('zh-CN'),
-            },
-            {
-              title: '操作',
-              width: 120,
-              render: (_: any, record: TaskGroup) => (
-                <Space size="mini">
-                  <Button
-                    type="text"
-                    size="mini"
-                    icon={<IconEdit />}
-                    onClick={() => handleEditGroup(record)}
-                  />
-                  <Popconfirm
-                    title="确定删除此分组吗？"
-                    onOk={() => handleDeleteGroup(record.id)}
-                  >
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <Table
+            columns={[
+              {
+                title: '排序',
+                width: 120,
+                render: (_: any, __: TaskGroup, index: number) => (
+                  <Space size="mini">
+                    <Button type="text" size="mini" disabled={index === 0} onClick={() => handleMoveGroup(index, 'up')}>
+                      上移
+                    </Button>
+                    <Button type="text" size="mini" disabled={index === groups.length - 1} onClick={() => handleMoveGroup(index, 'down')}>
+                      下移
+                    </Button>
+                  </Space>
+                ),
+              },
+              {
+                title: '分组名称',
+                dataIndex: 'name',
+              },
+              {
+                title: '描述',
+                dataIndex: 'description',
+              },
+              {
+                title: '创建时间',
+                dataIndex: 'created_at',
+                render: (time: string) => new Date(time).toLocaleString('zh-CN'),
+              },
+              {
+                title: '操作',
+                width: 120,
+                render: (_: any, record: TaskGroup) => (
+                  <Space size="mini">
                     <Button
                       type="text"
                       size="mini"
-                      status="danger"
-                      icon={<IconDelete />}
+                      icon={<IconEdit />}
+                      onClick={() => handleEditGroup(record)}
                     />
-                  </Popconfirm>
-                </Space>
-              ),
-            },
-          ]}
-          data={groups}
-          pagination={false}
-          rowKey="id"
-        />
+                    <Popconfirm
+                      title="确定删除此分组吗？"
+                      onOk={() => handleDeleteGroup(record.id)}
+                    >
+                      <Button
+                        type="text"
+                        size="mini"
+                        status="danger"
+                        icon={<IconDelete />}
+                      />
+                    </Popconfirm>
+                  </Space>
+                ),
+              },
+            ]}
+            data={groups}
+            pagination={false}
+            rowKey="id"
+          />
+        )}
       </Modal>
 
       <Modal

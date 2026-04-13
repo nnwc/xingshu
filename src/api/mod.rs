@@ -252,6 +252,8 @@ pub fn create_router(state: Arc<AppState>) -> Router {
         .route("/api/configs/microwarp/status", get(config::get_microwarp_status))
         .route("/api/configs/microwarp/config", post(config::update_microwarp_config))
         .route("/api/configs/microwarp/switch", post(config::switch_microwarp_ip))
+        .route("/api/configs/microwarp/start", post(config::start_microwarp))
+        .route("/api/configs/microwarp/stop", post(config::stop_microwarp))
         // 自动备份配置
         .route("/api/configs/auto-backup/config", get(config::get_auto_backup_config))
         .route("/api/configs/auto-backup/config", post(config::update_auto_backup_config))

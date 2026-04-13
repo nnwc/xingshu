@@ -103,10 +103,57 @@
   box-shadow: inset 0 0 0 1px rgba(99, 102, 241, 0.18);
 }
 
-body[arco-theme='dark'] .layout-sider .arco-menu-inner .arco-menu-selected,
-body[arco-theme='dark'] .layout-sider .arco-menu-inner .arco-menu-selected:hover {
-  background: linear-gradient(135deg, rgba(125, 211, 252, 0.10), rgba(167, 139, 250, 0.14));
-  box-shadow: inset 0 0 0 1px rgba(125, 211, 252, 0.16);
+body[arco-theme='dark'] .layout-sider {
+  background: var(--xingshu-dark-shell-bg) !important;
+  border-right-color: rgba(255, 255, 255, 0.06);
+}
+
+body[arco-theme='dark'] .logo,
+body[arco-theme='dark'] .layout-header,
+body[arco-theme='dark'] .layout-content {
+  background: var(--xingshu-dark-shell-bg) !important;
+}
+
+body[arco-theme='dark'] .layout-header {
+  border-bottom-color: rgba(255, 255, 255, 0.06);
+}
+
+body[arco-theme='dark'] .layout-content {
+  color: var(--xingshu-content-text);
+}
+
+body[arco-theme='dark'] .layout-content .arco-card,
+body[arco-theme='dark'] .layout-content .arco-card-body,
+body[arco-theme='dark'] .layout-content .arco-card-header,
+body[arco-theme='dark'] .layout-content .arco-table,
+body[arco-theme='dark'] .layout-content .arco-table-container,
+body[arco-theme='dark'] .layout-content .arco-table-content,
+body[arco-theme='dark'] .layout-content .arco-tabs-content,
+body[arco-theme='dark'] .layout-content .arco-tabs-content-item,
+body[arco-theme='dark'] .layout-content .arco-space,
+body[arco-theme='dark'] .layout-content .arco-empty,
+body[arco-theme='dark'] .layout-content .arco-descriptions,
+body[arco-theme='dark'] .layout-content .arco-descriptions-item,
+body[arco-theme='dark'] .layout-content .arco-list,
+body[arco-theme='dark'] .layout-content .arco-list-content,
+body[arco-theme='dark'] .layout-content .arco-collapse-item,
+body[arco-theme='dark'] .layout-content .arco-collapse-item-header,
+body[arco-theme='dark'] .layout-content .arco-collapse-item-content,
+body[arco-theme='dark'] .layout-content .arco-spin,
+body[arco-theme='dark'] .layout-content .arco-spin-children {
+  background: var(--xingshu-dark-shell-bg) !important;
+  background-color: var(--xingshu-dark-shell-bg) !important;
+}
+
+body[arco-theme='dark'] .layout-content .arco-card,
+body[arco-theme='dark'] .layout-content .arco-table,
+body[arco-theme='dark'] .layout-content .arco-table-container,
+body[arco-theme='dark'] .layout-content .arco-tabs-content,
+body[arco-theme='dark'] .layout-content .arco-collapse-item,
+body[arco-theme='dark'] .layout-content .arco-descriptions,
+body[arco-theme='dark'] .layout-content .arco-list {
+  border-color: rgba(255, 255, 255, 0.06) !important;
+  box-shadow: none !important;
 }
 
 .layout-sider .arco-menu-inner .arco-menu-selected::before {

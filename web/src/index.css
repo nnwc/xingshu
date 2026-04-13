@@ -50,6 +50,183 @@ body[arco-theme='dark'] {
   --xingshu-code-muted: #93a1b5;
   --xingshu-desc-badge-bg: rgba(167, 139, 250, 0.14);
   --xingshu-desc-badge-text: #c7b6ff;
+  --xingshu-dark-shell-bg: rgb(35, 35, 36);
+  --xingshu-content-title: var(--color-text-2);
+  --xingshu-content-text: var(--color-text-3);
+  --xingshu-content-muted: var(--color-text-3);
+  --xingshu-modal-text: var(--color-text-3);
+  --xingshu-modal-text-secondary: var(--color-text-3);
+  --xingshu-modal-surface: rgba(28, 31, 37, 0.98);
+  --xingshu-modal-surface-soft: rgba(255, 255, 255, 0.045);
+  --xingshu-modal-border: rgba(255, 255, 255, 0.08);
+  --xingshu-modal-border-soft: rgba(255, 255, 255, 0.06);
+  --xingshu-modal-input-bg: rgba(255, 255, 255, 0.04);
+  --xingshu-modal-input-border: rgba(255, 255, 255, 0.08);
+  --xingshu-modal-input-border-hover: rgba(255, 255, 255, 0.14);
+}
+
+body[arco-theme='dark'] {
+  background: var(--xingshu-dark-shell-bg);
+  color: var(--xingshu-content-text);
+}
+
+body[arco-theme='dark'] .arco-modal-content {
+  background: linear-gradient(180deg, var(--xingshu-modal-surface) 0%, rgba(24, 27, 33, 0.98) 100%);
+}
+
+body[arco-theme='dark'] .arco-modal-header,
+body[arco-theme='dark'] .arco-modal-footer,
+body[arco-theme='dark'] .arco-tabs-header-nav::before {
+  border-color: var(--xingshu-modal-border-soft);
+}
+
+body[arco-theme='dark'] .arco-modal,
+body[arco-theme='dark'] .arco-modal .arco-typography,
+body[arco-theme='dark'] .arco-modal .arco-form-label-item,
+body[arco-theme='dark'] .arco-modal .arco-tabs-header-title,
+body[arco-theme='dark'] .arco-modal .arco-form-item-label-col,
+body[arco-theme='dark'] .arco-modal input,
+body[arco-theme='dark'] .arco-modal textarea,
+body[arco-theme='dark'] .arco-modal .arco-select-view-value,
+body[arco-theme='dark'] .arco-modal .arco-input-inner,
+body[arco-theme='dark'] .arco-modal .arco-input-number-input,
+body[arco-theme='dark'] .arco-modal .arco-radio-label,
+body[arco-theme='dark'] .arco-modal .arco-checkbox-label {
+  color: var(--xingshu-modal-text) !important;
+}
+
+body[arco-theme='dark'] .arco-modal .arco-modal-title,
+body[arco-theme='dark'] .arco-modal .arco-card-header-title,
+body[arco-theme='dark'] .arco-modal .arco-tabs-header-title-active {
+  color: var(--xingshu-content-title) !important;
+}
+
+body[arco-theme='dark'] .arco-modal .arco-form-item-extra,
+body[arco-theme='dark'] .arco-modal .arco-typography[type='secondary'],
+body[arco-theme='dark'] .arco-modal .arco-tabs-header-title:not(.arco-tabs-header-title-active),
+body[arco-theme='dark'] .arco-modal input::placeholder,
+body[arco-theme='dark'] .arco-modal textarea::placeholder {
+  color: var(--xingshu-modal-text-secondary) !important;
+}
+
+body[arco-theme='dark'] .arco-modal .arco-card[bordered='false'],
+body[arco-theme='dark'] .arco-modal .arco-card {
+  background: var(--xingshu-modal-surface-soft);
+  border-color: var(--xingshu-modal-border-soft);
+}
+
+body[arco-theme='dark'] .arco-modal .arco-card-body {
+  background: transparent;
+}
+
+body[arco-theme='dark'] .arco-modal .arco-input-wrapper,
+body[arco-theme='dark'] .arco-modal .arco-select-view,
+body[arco-theme='dark'] .arco-modal .arco-input-number,
+body[arco-theme='dark'] .arco-modal .arco-textarea-wrapper,
+body[arco-theme='dark'] .arco-modal .arco-radio-group-button .arco-radio-button {
+  background: var(--xingshu-modal-input-bg);
+  border-color: var(--xingshu-modal-input-border);
+}
+
+body[arco-theme='dark'] .arco-modal .arco-input-wrapper:hover,
+body[arco-theme='dark'] .arco-modal .arco-select-view:hover,
+body[arco-theme='dark'] .arco-modal .arco-input-number:hover,
+body[arco-theme='dark'] .arco-modal .arco-textarea-wrapper:hover,
+body[arco-theme='dark'] .arco-modal .arco-radio-group-button .arco-radio-button:hover {
+  border-color: var(--xingshu-modal-input-border-hover);
+}
+
+body[arco-theme='dark'] .layout-content .arco-typography,
+body[arco-theme='dark'] .layout-content .arco-form-label-item,
+body[arco-theme='dark'] .layout-content .arco-form-item-label-col,
+body[arco-theme='dark'] .layout-content .arco-tabs-header-title,
+body[arco-theme='dark'] .layout-content .arco-table-th,
+body[arco-theme='dark'] .layout-content .arco-table-td,
+body[arco-theme='dark'] .layout-content .arco-descriptions-item-label,
+body[arco-theme='dark'] .layout-content .arco-descriptions-item-value,
+body[arco-theme='dark'] .layout-content input,
+body[arco-theme='dark'] .layout-content textarea,
+body[arco-theme='dark'] .layout-content .arco-select-view-value,
+body[arco-theme='dark'] .layout-content .arco-input-inner,
+body[arco-theme='dark'] .layout-content .arco-input-number-input,
+body[arco-theme='dark'] .layout-content .arco-radio-label,
+body[arco-theme='dark'] .layout-content .arco-checkbox-label,
+body[arco-theme='dark'] .layout-content .arco-btn {
+  color: var(--xingshu-content-text);
+}
+
+body[arco-theme='dark'] .layout-content .arco-card-header-title,
+body[arco-theme='dark'] .layout-content .arco-modal-title,
+body[arco-theme='dark'] .layout-content .arco-tabs-header-title-active,
+body[arco-theme='dark'] .layout-content h1,
+body[arco-theme='dark'] .layout-content h2,
+body[arco-theme='dark'] .layout-content h3,
+body[arco-theme='dark'] .layout-content h4,
+body[arco-theme='dark'] .layout-content h5,
+body[arco-theme='dark'] .layout-content h6 {
+  color: var(--xingshu-content-title);
+}
+
+body[arco-theme='dark'] .layout-content .arco-typography[type='secondary'],
+body[arco-theme='dark'] .layout-content .arco-form-item-extra,
+body[arco-theme='dark'] .layout-content .arco-tabs-header-title:not(.arco-tabs-header-title-active),
+body[arco-theme='dark'] .layout-content input::placeholder,
+body[arco-theme='dark'] .layout-content textarea::placeholder,
+body[arco-theme='dark'] .layout-content .tasks-toolbar-meta,
+body[arco-theme='dark'] .layout-content .tasks-mobile-summary,
+body[arco-theme='dark'] .layout-content .tasks-mobile-card-meta-label,
+body[arco-theme='dark'] .layout-content .tasks-group-title,
+body[arco-theme='dark'] .layout-content .tasks-group-tab,
+body[arco-theme='dark'] .layout-content .env-value-masked,
+body[arco-theme='dark'] .layout-content .env-value-mask-tip-icon {
+  color: var(--xingshu-content-muted);
+}
+
+body[arco-theme='dark'] .layout-content .arco-input-wrapper,
+body[arco-theme='dark'] .layout-content .arco-select-view,
+body[arco-theme='dark'] .layout-content .arco-input-number,
+body[arco-theme='dark'] .layout-content .arco-textarea-wrapper,
+body[arco-theme='dark'] .layout-content .arco-picker,
+body[arco-theme='dark'] .layout-content .arco-picker-input {
+  background: rgba(255, 255, 255, 0.035) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+body[arco-theme='dark'] .layout-content .arco-input-wrapper:hover,
+body[arco-theme='dark'] .layout-content .arco-select-view:hover,
+body[arco-theme='dark'] .layout-content .arco-input-number:hover,
+body[arco-theme='dark'] .layout-content .arco-textarea-wrapper:hover,
+body[arco-theme='dark'] .layout-content .arco-picker:hover,
+body[arco-theme='dark'] .layout-content .arco-picker-input:hover {
+  border-color: rgba(255, 255, 255, 0.13) !important;
+}
+
+body[arco-theme='dark'] .layout-content .arco-table-th {
+  background: rgba(255, 255, 255, 0.02) !important;
+}
+
+body[arco-theme='dark'] .layout-content .arco-table-td,
+body[arco-theme='dark'] .layout-content .arco-table-th,
+body[arco-theme='dark'] .layout-content .arco-card,
+body[arco-theme='dark'] .layout-content .arco-card-header,
+body[arco-theme='dark'] .layout-content .arco-card-body,
+body[arco-theme='dark'] .layout-content .arco-tabs-header-nav::before,
+body[arco-theme='dark'] .layout-content .arco-divider-horizontal,
+body[arco-theme='dark'] .layout-content .arco-descriptions-item,
+body[arco-theme='dark'] .layout-content .arco-list-bordered,
+body[arco-theme='dark'] .layout-content .arco-collapse-item,
+body[arco-theme='dark'] .layout-content .arco-collapse-item-header {
+  border-color: rgba(255, 255, 255, 0.06) !important;
+}
+
+body[arco-theme='dark'] .layout-content .arco-btn:not(.arco-btn-primary) {
+  background: rgba(255, 255, 255, 0.035) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+body[arco-theme='dark'] .layout-content .arco-btn:not(.arco-btn-primary):hover {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
 }
 
 * {

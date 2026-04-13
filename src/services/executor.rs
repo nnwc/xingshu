@@ -1,3 +1,4 @@
+use regex::Regex;
 use crate::models::Task;
 use crate::services::{EnvService, ConfigService};
 use crate::utils::python_detector::PYTHON_CMD;
@@ -482,7 +483,7 @@ impl Executor {
         self.executions.write().await.insert(execution_id.clone(), exec_info);
 
         // 解析环境变量
-        let env_vars = self.parse_env(&task.env).await;
+        let env_vars = self.parse_env().await;
 
         // 获取工作目录（提前计算，供前置、主命令、后置命令使用）
         let working_dir = self.get_working_directory(&task);
@@ -700,7 +701,7 @@ impl Executor {
         self.executions.write().await.insert(execution_id.clone(), exec_info);
 
         // 解析环境变量
-        let env_vars = self.parse_env(&task.env).await;
+        let env_vars = self.parse_env().await;
 
         // 获取工作目录
         let working_dir = self.get_working_directory(&task);
@@ -1013,7 +1014,7 @@ impl Executor {
         self.executions.read().await.get(execution_id).cloned()
     }
 
-    async fn parse_env(&self, env_json: &Option<String>) -> HashMap<String, String> {
+    async fn parse_env(&self) -> HashMap<String, String> {
         let mut env_vars = HashMap::new();
 
         // 添加基础环境变量
@@ -1023,13 +1024,6 @@ impl Executor {
         // 从数据库读取全局环境变量
         if let Ok(global_vars) = self.env_service.get_all_as_map().await {
             env_vars.extend(global_vars);
-        }
-
-        // 解析自定义环境变量（会覆盖全局变量）
-        if let Some(json_str) = env_json {
-            if let Ok(custom_vars) = serde_json::from_str::<HashMap<String, String>>(json_str) {
-                env_vars.extend(custom_vars);
-            }
         }
 
         env_vars
@@ -1042,6 +1036,44 @@ impl Executor {
             .ok()
             .flatten()
             .map(|config| config.value)
+    }
+
+    fn split_accounts_by_rule(&self, source: &str, rule: &str) -> Vec<String> {
+        let normalized_rule = rule.trim();
+        if normalized_rule.is_empty() {
+            return Vec::new();
+        }
+
+        let regex_pattern = if normalized_rule.starts_with("regex:") {
+            normalized_rule.trim_start_matches("regex:").trim().to_string()
+        } else {
+            normalized_rule
+                .split('|')
+                .map(str::trim)
+                .filter(|item| !item.is_empty())
+                .map(regex::escape)
+                .collect::<Vec<_>>()
+                .join("|")
+        };
+
+        if regex_pattern.is_empty() {
+            return Vec::new();
+        }
+
+        Regex::new(&regex_pattern)
+            .map(|re| {
+                re.split(source)
+                    .map(|item| item.trim().to_string())
+                    .filter(|item| !item.is_empty())
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_else(|_| {
+                source
+                    .split(normalized_rule)
+                    .map(|item| item.trim().to_string())
+                    .filter(|item| !item.is_empty())
+                    .collect::<Vec<_>>()
+            })
     }
 
     async fn resolve_account_run_plan(
@@ -1064,22 +1096,18 @@ impl Executor {
             return None;
         }
 
-        let delimiter = if let Some(value) = task.account_split_delimiter.clone().filter(|v| !v.trim().is_empty()) {
+        let split_rule = if let Some(value) = task.account_split_delimiter.clone().filter(|v| !v.trim().is_empty()) {
             value
         } else {
             self.get_system_config_value("account_split_delimiter")
                 .await
                 .unwrap_or_else(|| "@".to_string())
         };
-        if delimiter.is_empty() {
+        if split_rule.trim().is_empty() {
             return None;
         }
 
-        let accounts: Vec<String> = source
-            .split(&delimiter)
-            .map(|item| item.trim().to_string())
-            .filter(|item| !item.is_empty())
-            .collect();
+        let accounts = self.split_accounts_by_rule(&source, &split_rule);
         if accounts.len() <= 1 {
             return None;
         }

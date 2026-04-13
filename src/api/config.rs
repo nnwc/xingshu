@@ -146,6 +146,28 @@ pub async fn update_microwarp_config(
     Ok(Json(serde_json::json!({ "success": true, "data": config })))
 }
 
+pub async fn start_microwarp(
+    State(state): State<Arc<AppState>>,
+) -> Result<impl IntoResponse, (StatusCode, String)> {
+    let message = state
+        .config_service
+        .start_microwarp()
+        .await
+        .map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))?;
+    Ok(Json(serde_json::json!({ "success": true, "message": message })))
+}
+
+pub async fn stop_microwarp(
+    State(state): State<Arc<AppState>>,
+) -> Result<impl IntoResponse, (StatusCode, String)> {
+    let message = state
+        .config_service
+        .stop_microwarp()
+        .await
+        .map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))?;
+    Ok(Json(serde_json::json!({ "success": true, "message": message })))
+}
+
 pub async fn switch_microwarp_ip(
     State(state): State<Arc<AppState>>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
@@ -157,7 +179,6 @@ pub async fn switch_microwarp_ip(
     Ok(Json(serde_json::json!({ "success": true, "message": message })))
 }
 
-// 获取自动备份配置
 pub async fn get_auto_backup_config(
     State(state): State<Arc<AppState>>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {

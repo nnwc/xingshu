@@ -5,6 +5,7 @@ use anyhow::{anyhow, Result};
 use chrono::{DateTime, Utc};
 use flate2::read::GzDecoder;
 use std::collections::HashMap;
+use std::ffi::OsStr;
 use std::fs::File;
 use std::io::Cursor;
 use std::os::unix::fs::PermissionsExt;
@@ -110,6 +111,32 @@ impl ScriptService {
         }
 
         env_vars
+    }
+
+    fn script_stem_from_path(path: &str) -> String {
+        std::path::Path::new(path)
+            .file_stem()
+            .and_then(OsStr::to_str)
+            .filter(|s| !s.is_empty())
+            .unwrap_or("script")
+            .to_string()
+    }
+
+    fn inject_script_output_env(env_vars: &mut HashMap<String, String>, base_path: &std::path::Path, script_path: &str) {
+        let script_name = Self::script_stem_from_path(script_path);
+        let outputs_dir = base_path.join("outputs").join(&script_name);
+        let outputs_dir_str = outputs_dir.to_string_lossy().to_string();
+
+        env_vars.insert("SCRIPT_OUTPUT_DIR".to_string(), outputs_dir_str.clone());
+        env_vars.insert("OUTPUT_DIR".to_string(), outputs_dir_str.clone());
+        env_vars.entry("DEFAULT_OUTPUT_DIR".to_string()).or_insert(outputs_dir_str.clone());
+
+        env_vars.entry("FETCH_PROXY_OUTPUT_FILE".to_string()).or_insert_with(|| {
+            outputs_dir.join("cnc07.txt").to_string_lossy().to_string()
+        });
+        env_vars.entry("FETCH_PROXY_CLASH_FILE".to_string()).or_insert_with(|| {
+            outputs_dir.join("cnc07-clash.yaml").to_string_lossy().to_string()
+        });
     }
 
     pub async fn init(&self) -> Result<()> {
@@ -395,7 +422,9 @@ impl ScriptService {
         // 设置工作目录为脚本所在目录
         cmd.current_dir(working_dir);
         cmd.env_clear();
-        cmd.envs(self.parse_env(env_json).await);
+        let mut env_vars = self.parse_env(env_json).await;
+        Self::inject_script_output_env(&mut env_vars, &self.base_path, path);
+        cmd.envs(env_vars);
         cmd.stdout(std::process::Stdio::piped());
         cmd.stderr(std::process::Stdio::piped());
 
@@ -523,7 +552,11 @@ impl ScriptService {
 
         cmd.current_dir(&work_dir);
         cmd.env_clear();
-        cmd.envs(self.parse_env(env_json).await);
+        let mut env_vars = self.parse_env(env_json).await;
+        if let Some(path) = file_path {
+            Self::inject_script_output_env(&mut env_vars, &self.base_path, path);
+        }
+        cmd.envs(env_vars);
         cmd.stdout(std::process::Stdio::piped());
         cmd.stderr(std::process::Stdio::piped());
 

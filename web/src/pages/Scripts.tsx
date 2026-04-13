@@ -13,6 +13,7 @@ import {
   Menu,
   Spin,
   Tree,
+  Tag,
 } from '@arco-design/web-react';
 import {
   IconPlus,
@@ -690,11 +691,16 @@ const Scripts: React.FC = () => {
     return 'plaintext';
   };
 
+  const isOutputsFolder = (file: ScriptFile) => file.isDirectory && (file.path === 'outputs' || file.path.startsWith('outputs/'));
+  const isOutputsRootEntry = (file: ScriptFile) => file.isDirectory && file.path === 'outputs';
+
   const renderFileList = () => {
     return (
       <div style={{ padding: isMobile ? '8px' : '12px' }}>
         {files.map((file) => {
           const isActive = selectedFile?.path === file.path;
+          const isOutputFolder = isOutputsFolder(file);
+          const isOutputRoot = isOutputsRootEntry(file);
           return (
             <div
               key={file.path}
@@ -707,12 +713,20 @@ const Scripts: React.FC = () => {
                   ? theme === 'dark'
                     ? 'linear-gradient(135deg, rgba(125, 211, 252, 0.14), rgba(167, 139, 250, 0.18))'
                     : 'linear-gradient(135deg, rgba(64, 128, 255, 0.12), rgba(139, 92, 246, 0.10))'
-                  : 'transparent',
+                  : isOutputRoot
+                    ? theme === 'dark'
+                      ? 'linear-gradient(135deg, rgba(250, 204, 21, 0.10), rgba(251, 191, 36, 0.08))'
+                      : 'linear-gradient(135deg, rgba(250, 204, 21, 0.12), rgba(245, 158, 11, 0.08))'
+                    : 'transparent',
                 border: isActive
                   ? theme === 'dark'
                     ? '1px solid rgba(125, 211, 252, 0.28)'
                     : '1px solid rgba(64, 128, 255, 0.18)'
-                  : '1px solid transparent',
+                  : isOutputRoot
+                    ? theme === 'dark'
+                      ? '1px solid rgba(250, 204, 21, 0.22)'
+                      : '1px solid rgba(245, 158, 11, 0.18)'
+                    : '1px solid transparent',
                 boxShadow: isActive
                   ? theme === 'dark'
                     ? '0 6px 18px rgba(15, 23, 42, 0.28)'
@@ -730,11 +744,22 @@ const Scripts: React.FC = () => {
             >
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, minWidth: 0, flex: 1 }}>
                 {file.isDirectory ? (
-                  <IconFolder style={{ fontSize: 16, color: isActive ? (theme === 'dark' ? '#f6d365' : '#d48806') : '#f7ba1e', flexShrink: 0, marginTop: 2 }} />
+                  <IconFolder style={{ fontSize: 16, color: isOutputFolder ? (theme === 'dark' ? '#fcd34d' : '#d97706') : isActive ? (theme === 'dark' ? '#f6d365' : '#d48806') : '#f7ba1e', flexShrink: 0, marginTop: 2 }} />
                 ) : (
                   <IconFile style={{ fontSize: 16, color: isActive ? 'rgb(var(--primary-5))' : 'rgb(var(--primary-6))', flexShrink: 0, marginTop: 2 }} />
                 )}
-                <span style={{ fontSize: isMobile ? '13px' : '14px', wordBreak: 'break-all', overflowWrap: 'anywhere', lineHeight: '1.5', color: isActive ? 'var(--color-text-1)' : 'var(--color-text-2)', fontWeight: isActive ? 600 : 400 }}>{file.name}</span>
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: isMobile ? '13px' : '14px', wordBreak: 'break-all', overflowWrap: 'anywhere', lineHeight: '1.5', color: isActive ? 'var(--color-text-1)' : 'var(--color-text-2)', fontWeight: isActive ? 600 : 400 }}>{file.name}</span>
+                    {isOutputRoot && <Tag size="small" color="orange">输出区</Tag>}
+                    {!isOutputRoot && isOutputFolder && <Tag size="small">输出</Tag>}
+                  </div>
+                  {isOutputRoot && (
+                    <div style={{ marginTop: 4, fontSize: 12, color: 'var(--color-text-3)', lineHeight: 1.5 }}>
+                      这里存放脚本运行产物，不和源脚本混在一起。
+                    </div>
+                  )}
+                </div>
               </div>
               <div style={{ marginLeft: 'auto', flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
                 <Dropdown
@@ -825,7 +850,7 @@ const Scripts: React.FC = () => {
           bodyStyle={{ flex: 1, overflow: 'auto', padding: 0 }}
           title={
             <div style={{ fontSize: '14px', fontWeight: 'bold' }}>
-              脚本文件
+              脚本与输出
             </div>
           }
           extra={

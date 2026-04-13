@@ -15,6 +15,7 @@ import {
   Grid,
   Switch,
   Table,
+  Select,
 } from '@arco-design/web-react';
 import { IconSave, IconDownload, IconUpload, IconRefresh, IconLink } from '@arco-design/web-react/icon';
 import axios from 'axios';
@@ -29,6 +30,19 @@ const FormItem = Form.Item;
 const { Title, Text } = Typography;
 const TabPane = Tabs.TabPane;
 const { Row, Col } = Grid;
+const { Option } = Select;
+
+const getMicroWarpSwitchModeLabel = (mode?: string) => {
+  switch (mode) {
+    case 'http-api':
+      return 'HTTP 接口';
+    case 'delete-config-and-restart':
+      return '删除配置后重启';
+    case 'container-restart':
+    default:
+      return '容器重启';
+  }
+};
 
 interface DiskInfo {
   name: string;
@@ -84,6 +98,7 @@ const Config: React.FC = () => {
   const [microWarpForm] = Form.useForm();
   const [microWarpLoading, setMicroWarpLoading] = useState(false);
   const [microWarpSwitchLoading, setMicroWarpSwitchLoading] = useState(false);
+  const [microWarpStartStopLoading, setMicroWarpStartStopLoading] = useState(false);
   const [microWarpStatus, setMicroWarpStatus] = useState<MicroWarpStatus | null>(null);
   const [microWarpStatusLoading, setMicroWarpStatusLoading] = useState(false);
   const [systemInfo, setSystemInfo] = useState<SystemInfo | null>(null);
@@ -274,6 +289,7 @@ const Config: React.FC = () => {
       });
       microWarpForm.setFieldsValue({
         enabled: res.data?.enabled ?? false,
+        switch_mode: !res.data?.switch_url ? ((res.data?.reset_config_on_switch ?? false) ? 'delete-config-and-restart' : 'container-restart') : 'http-api',
         switch_url: res.data?.switch_url ?? '',
         proxy_url: res.data?.proxy_url ?? '',
         ip_check_url: res.data?.ip_check_url ?? 'https://api.ipify.org',
@@ -286,6 +302,7 @@ const Config: React.FC = () => {
     } catch (error) {
       microWarpForm.setFieldsValue({
         enabled: false,
+        switch_mode: 'container-restart',
         switch_url: '',
         proxy_url: '',
         ip_check_url: 'https://api.ipify.org',
@@ -301,9 +318,17 @@ const Config: React.FC = () => {
   const handleSaveMicroWarp = async () => {
     try {
       const values = await microWarpForm.validate();
+      const payload = { ...values };
+      if (payload.switch_mode === 'http-api') {
+        payload.reset_config_on_switch = false;
+      } else {
+        payload.switch_url = '';
+        payload.reset_config_on_switch = payload.switch_mode === 'delete-config-and-restart';
+      }
+      delete payload.switch_mode;
       setMicroWarpLoading(true);
       const token = localStorage.getItem('token');
-      await axios.post('/api/configs/microwarp/config', values, {
+      await axios.post('/api/configs/microwarp/config', payload, {
         headers: { Authorization: `Bearer ${token}` },
       });
       Message.success('MicroWARP 配置已保存');
@@ -314,6 +339,23 @@ const Config: React.FC = () => {
       setMicroWarpLoading(false);
     }
   };
+
+  const handleToggleMicroWarpRunning = async (targetRunning: boolean) => {
+    try {
+      setMicroWarpStartStopLoading(true);
+      const token = localStorage.getItem('token');
+      const res = await axios.post(targetRunning ? '/api/configs/microwarp/start' : '/api/configs/microwarp/stop', {}, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      Message.success(res.data?.message || (targetRunning ? 'MicroWARP 已启动' : 'MicroWARP 已停止'));
+      loadMicroWarpStatus();
+    } catch (error: any) {
+      Message.error(error.response?.data || error.response?.data?.message || (targetRunning ? '启动 MicroWARP 失败' : '停止 MicroWARP 失败'));
+    } finally {
+      setMicroWarpStartStopLoading(false);
+    }
+  };
+
 
   const handleSwitchMicroWarpIp = async () => {
     try {
@@ -858,6 +900,9 @@ const Config: React.FC = () => {
                   <Text type="secondary">在系统配置里维护 MicroWARP 全局参数，并支持手动立即切换一次 IP。任务编辑页可按任务决定是否接入和运行前切换。</Text>
                 </div>
                 <Space wrap>
+                  <Button loading={microWarpStartStopLoading} onClick={() => handleToggleMicroWarpRunning(!(microWarpStatus?.running ?? false))}>
+                    {microWarpStatus?.running ? '关闭 MicroWARP' : '开启 MicroWARP'}
+                  </Button>
                   <Button loading={microWarpSwitchLoading} onClick={handleSwitchMicroWarpIp}>立即切换 IP</Button>
                   <Button type="primary" icon={<IconSave />} loading={microWarpLoading} onClick={handleSaveMicroWarp}>保存配置</Button>
                 </Space>
@@ -880,7 +925,7 @@ const Config: React.FC = () => {
                       </Col>
                       <Col xs={24} md={12}>
                         <Text type="secondary">切换模式：</Text>
-                        <Text style={{ marginLeft: 8 }}>{microWarpStatus?.switch_mode === 'http-api' ? 'HTTP 接口' : '容器重启'}</Text>
+                        <Text style={{ marginLeft: 8 }}>{getMicroWarpSwitchModeLabel(microWarpStatus?.switch_mode)}</Text>
                       </Col>
                       <Col xs={24} md={12}>
                         <Text type="secondary">代理地址：</Text>
@@ -900,12 +945,48 @@ const Config: React.FC = () => {
                 <Divider />
 
                 <Title heading={6}>连接与出口</Title>
-                <FormItem label="切换 IP 接口地址" field="switch_url" extra="可选。如果留空，将自动改为重启 MicroWARP 容器实现切换。">
-                  <Input placeholder="例如 http://127.0.0.1:4000/switch；留空则走容器重启方案" prefix={<IconLink />} />
+                <FormItem label="切换模式" field="switch_mode" initialValue="container-restart" extra="明确选择 MicroWARP 切换方式，保存时会自动映射到当前后端配置。">
+                  <Select placeholder="请选择切换模式">
+                    <Option value="http-api">HTTP 接口切换</Option>
+                    <Option value="container-restart">容器重启</Option>
+                    <Option value="delete-config-and-restart">删除配置后重启</Option>
+                  </Select>
                 </FormItem>
-                <FormItem label="MicroWARP 容器名" field="container_name" extra="当切换 IP 接口地址留空时，系统会通过重启这个容器来完成切换。默认 microwarp。">
-                  <Input placeholder="例如 microwarp" />
-                </FormItem>
+                <Form.Item noStyle shouldUpdate>
+                  {(values) => (
+                    <>
+                      {values.switch_mode === 'http-api' ? (
+                        <FormItem
+                          label="切换 IP 接口地址"
+                          field="switch_url"
+                          rules={[{ required: true, message: '请输入切换 IP 接口地址' }]}
+                          extra={
+                            <div style={{ lineHeight: 1.7 }}>
+                              <div>保存后点击“立即切换 IP”时，会直接向这个地址发起 POST 请求。</div>
+                              <div>示例：<code>http://127.0.0.1:4000/switch</code></div>
+                            </div>
+                          }
+                        >
+                          <Input placeholder="例如 http://127.0.0.1:4000/switch" prefix={<IconLink />} />
+                        </FormItem>
+                      ) : null}
+                      {values.switch_mode !== 'http-api' ? (
+                        <FormItem
+                          label="MicroWARP 容器名"
+                          field="container_name"
+                          extra={
+                            <div style={{ lineHeight: 1.7 }}>
+                              <div>{values.switch_mode === 'delete-config-and-restart' ? '切换时会先删除 /etc/wireguard/wg0.conf，再重启这个容器。' : '切换时会直接重启这个容器。默认容器名为 microwarp。'}</div>
+                              <div>示例：<code>microwarp</code></div>
+                            </div>
+                          }
+                        >
+                          <Input placeholder="例如 microwarp" />
+                        </FormItem>
+                      ) : null}
+                    </>
+                  )}
+                </Form.Item>
                 <FormItem label="代理地址" field="proxy_url" extra="用于出口流量和 IP 查询走 MicroWARP 代理，建议填写 socks5://127.0.0.1:1080。">
                   <Input placeholder="例如 socks5://127.0.0.1:1080 或 socks5://admin:123456@127.0.0.1:1080" />
                 </FormItem>
@@ -916,9 +997,18 @@ const Config: React.FC = () => {
                 <Divider />
 
                 <Title heading={6}>切换策略</Title>
-                <FormItem label="切换时删除配置" field="reset_config_on_switch" triggerPropName="checked" extra="开启后每次切换都会先删除 /etc/wireguard/wg0.conf，再重启 MicroWARP，适合真正换出口 IP。">
-                  <Switch />
-                </FormItem>
+                <Form.Item noStyle shouldUpdate>
+                  {(values) => values.switch_mode === 'delete-config-and-restart' ? (
+                    <div style={{ marginBottom: 16, padding: '12px 14px', borderRadius: 8, background: 'var(--color-fill-2)', color: 'var(--color-text-2)', lineHeight: 1.7 }}>
+                      <div>当前模式会在每次切换前自动删除配置并重启容器。</div>
+                      <div>适合希望尽量重新获取出口 IP 的场景，无需额外开启“切换时删除配置”。</div>
+                    </div>
+                  ) : (
+                    <FormItem label="切换时删除配置" field="reset_config_on_switch" triggerPropName="checked" extra="开启后每次切换都会先删除 /etc/wireguard/wg0.conf，再重启 MicroWARP，适合真正换出口 IP。">
+                      <Switch />
+                    </FormItem>
+                  )}
+                </Form.Item>
                 <Row gutter={16}>
                   <Col xs={24} md={12}>
                     <FormItem label="切换超时（毫秒）" field="timeout_ms">
@@ -1279,14 +1369,14 @@ const Config: React.FC = () => {
                 </div>
 
                 <div style={{ padding: '16px', borderRadius: 10, background: 'var(--color-fill-2)' }}>
-                  <Typography.Title heading={6} style={{ marginTop: 0 }}>拆分符设置分区</Typography.Title>
+                  <Typography.Title heading={6} style={{ marginTop: 0 }}>拆分规则设置分区</Typography.Title>
                   <Typography.Text type="secondary">
-                    控制多账号字符串如何拆分。支持普通字符和特殊字符，例如 <code>@</code>、<code>|</code>、<code>#</code>、<code>&amp;</code>、<code>#&amp;</code>；这里按“整段文本”精确拆分，不是正则。
+                    控制多账号字符串如何拆分。支持单个分隔符、多分隔符（如 <code>@|#|&amp;</code>）、多字符分隔符（如 <code>#&amp;</code>），也支持 <code>regex:</code> 正则表达式。
                   </Typography.Text>
                   <div style={{ marginTop: 8, color: 'var(--color-text-2)', fontSize: 13, lineHeight: 1.7 }}>
-                    多个拆分符当前<strong>不能同时生效</strong>，一次只能填写<strong>一个默认拆分符规则</strong>。<br />
-                    例如：<code>@</code> 表示按 <code>@</code> 拆；<code>#&amp;</code> 表示按连续文本 <code>#&amp;</code> 拆。<br />
-                    如果你的数据里既可能有 <code>#</code> 又可能有 <code>&amp;</code>，需要统一源数据格式，或在具体任务里单独填写该任务自己的拆分符。
+                    <div>这里填写的是系统默认拆分规则；任务里如果单独填写，会优先生效。</div>
+                    <div>示例：<code>@</code> 表示按 <code>@</code> 拆；<code>#|&amp;</code> 表示同时按 <code>#</code> 和 <code>&amp;</code> 拆；<code>#&amp;</code> 表示按连续文本 <code>#&amp;</code> 拆。</div>
+                    <div>如果数据是 <code>{'{1#2}&{2#3}'}</code> 这种结构，默认规则可填写 <code>&amp;</code>；需要正则时可填写 <code>regex:[#&amp;]</code>。</div>
                   </div>
                   <div style={{ marginTop: 12 }}>
                     <Space direction={isMobile ? 'vertical' : 'horizontal'} align="center">
@@ -1294,11 +1384,11 @@ const Config: React.FC = () => {
                         value={defaultAccountSplitDelimiter}
                         onChange={setDefaultAccountSplitDelimiter}
                         style={{ width: 220 }}
-                        placeholder="例如 @ 或 # 或 & 或 #&"
-                        maxLength={20}
+                        placeholder="示例：@ / #|& / #& / regex:[#&]"
+                        maxLength={50}
                       />
                       <Button type="primary" loading={saveDelimiterLoading} onClick={handleSaveAccountSplitDelimiter}>
-                        保存默认拆分符
+                        保存默认拆分规则
                       </Button>
                     </Space>
                   </div>

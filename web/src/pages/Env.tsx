@@ -1,6 +1,4 @@
 import React, { useEffect, useState } from 'react';
-
-const MOBILE_VALUE_PREVIEW_LINES = 6;
 import {
   Card,
   Table,
@@ -13,16 +11,20 @@ import {
   Popconfirm,
   Switch,
   Typography,
+  Tag,
+  Tooltip,
 } from '@arco-design/web-react';
-import { IconPlus, IconEdit, IconDelete } from '@arco-design/web-react/icon';
+import { IconPlus, IconEdit, IconDelete, IconEye, IconEyeInvisible } from '@arco-design/web-react/icon';
 import { envApi } from '@/api/env';
 import type { EnvVar } from '@/types';
 import './Env.css';
 
 const FormItem = Form.Item;
+const MASKED_VALUE_PLACEHOLDER = '已隐藏';
+
 const Env: React.FC = () => {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
-  const [expandedValueKeys, setExpandedValueKeys] = useState<Record<number, boolean>>({});
+  const [revealedValueKeys, setRevealedValueKeys] = useState<Record<number, boolean>>({});
 
   // 全局变量
   const [envVars, setEnvVars] = useState<EnvVar[]>([]);
@@ -96,6 +98,10 @@ const Env: React.FC = () => {
     }
   };
 
+  const toggleValueVisibility = (id: number) => {
+    setRevealedValueKeys((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
 
   const globalColumns = [
     {
@@ -109,54 +115,88 @@ const Env: React.FC = () => {
     {
       title: '变量值',
       dataIndex: 'value',
-      width: 300,
-      ellipsis: true,
-      render: (value: string) => (
-        <span className="env-value-text" style={{ fontFamily: 'monospace', fontSize: '12px' }}>{value}</span>
-      ),
+      width: 170,
+      render: (value: string, record: EnvVar) => {
+        const revealed = !!revealedValueKeys[record.id];
+        const displayValue = value || '-';
+        return (
+          <span className="env-masked-value-inline">
+            <span className="env-value-content-wrap">
+              {revealed ? (
+                <Tooltip content={displayValue} position="top">
+                  <span className="env-value-text env-value-revealed env-value-slot" title={displayValue}>
+                    {displayValue}
+                  </span>
+                </Tooltip>
+              ) : (
+                <span className="env-value-text env-value-masked env-value-slot">{MASKED_VALUE_PLACEHOLDER}</span>
+              )}
+            </span>
+            <Button
+              type="text"
+              size="mini"
+              className="env-value-toggle-btn"
+              icon={revealed ? <IconEyeInvisible /> : <IconEye />}
+              onClick={() => toggleValueVisibility(record.id)}
+            />
+          </span>
+        );
+      },
     },
     {
       title: '描述',
       dataIndex: 'remark',
+      width: 180,
       ellipsis: true,
+      render: (remark?: string) => remark ? (
+        <Tooltip content={remark} position="top">
+          <span style={{ display: 'inline-block', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {remark}
+          </span>
+        </Tooltip>
+      ) : '-',
     },
     {
       title: '标签',
       dataIndex: 'tag',
-      width: 140,
-      render: (tag: string) => tag || '-',
+      width: 120,
+      render: (tag: string) => tag ? <Tag size="small" color="arcoblue">{tag}</Tag> : '-',
     },
     {
       title: '状态',
       dataIndex: 'enabled',
-      width: 100,
+      width: 96,
+      align: 'center' as const,
       render: (enabled: boolean, record: EnvVar) => (
-        <Switch
-          checked={enabled}
-          onChange={async (checked) => {
-            try {
-              await envApi.update(record.id, { enabled: checked });
-              Message.success(checked ? '已启用' : '已禁用');
-              loadEnvVars();
-            } catch (error: any) {
-              Message.error(error.response?.data?.error || '操作失败');
-            }
-          }}
-        />
+        <div style={{ display: 'flex', justifyContent: 'center' }}>
+          <Switch
+            size="small"
+            checked={enabled}
+            onChange={async (checked) => {
+              try {
+                await envApi.update(record.id, { enabled: checked });
+                Message.success(checked ? '已启用' : '已禁用');
+                loadEnvVars();
+              } catch (error: any) {
+                Message.error(error.response?.data?.error || '操作失败');
+              }
+            }}
+          />
+        </div>
       ),
     },
     {
       title: '创建时间',
       dataIndex: 'created_at',
-      width: 180,
+      width: 168,
       render: (time: string) => new Date(time).toLocaleString('zh-CN'),
     },
     {
       title: '操作',
-      width: 150,
-      fixed: 'right' as const,
+      width: 132,
+      align: 'center' as const,
       render: (_: any, record: EnvVar) => (
-        <Space>
+        <Space size={2}>
           <Button type="text" size="small" icon={<IconEdit />} onClick={() => handleEdit(record)}>
             编辑
           </Button>
@@ -193,36 +233,33 @@ const Env: React.FC = () => {
                   </Typography.Text>
                 </div>
 
-                <div className="env-mobile-value-block" style={{ marginBottom: 10, padding: '10px', borderRadius: 8, overflow: 'hidden' }}>
-                  <Typography.Paragraph
-                    copyable
-                    style={{
-                      marginBottom: 0,
-                      fontFamily: 'monospace',
-                      fontSize: 12,
-                      lineHeight: 1.6,
-                      wordBreak: 'break-all',
-                      overflowWrap: 'anywhere',
-                      whiteSpace: 'pre-wrap',
-                      maxWidth: '100%',
-                      display: '-webkit-box',
-                      WebkitLineClamp: expandedValueKeys[item.id] ? 'unset' : MOBILE_VALUE_PREVIEW_LINES,
-                      WebkitBoxOrient: 'vertical',
-                      overflow: expandedValueKeys[item.id] ? 'visible' : 'hidden',
-                    }}
-                  >
-                    {item.value}
-                  </Typography.Paragraph>
-                  {item.value && item.value.split('\n').length > MOBILE_VALUE_PREVIEW_LINES && (
+                <div className="env-mobile-value-block env-mobile-value-masked" style={{ marginBottom: 10, padding: '10px', borderRadius: 8, overflow: 'hidden' }}>
+                  <div className="env-mobile-value-mask-header">
+                    <Typography.Text
+                      className={revealedValueKeys[item.id] ? 'env-value-revealed env-mobile-value-revealed env-value-slot' : 'env-value-masked env-value-slot env-mobile-value-hidden'}
+                      style={{
+                        display: 'block',
+                        marginBottom: 0,
+                        fontFamily: 'monospace',
+                        fontSize: 12,
+                        letterSpacing: revealedValueKeys[item.id] ? undefined : '0.12em',
+                        wordBreak: 'break-all',
+                        overflowWrap: 'anywhere',
+                      }}
+                    >
+                      {revealedValueKeys[item.id] ? (item.value || '-') : MASKED_VALUE_PLACEHOLDER}
+                    </Typography.Text>
                     <Button
                       type="text"
                       size="mini"
-                      style={{ marginTop: 6, paddingLeft: 0 }}
-                      onClick={() => setExpandedValueKeys((prev) => ({ ...prev, [item.id]: !prev[item.id] }))}
-                    >
-                      {expandedValueKeys[item.id] ? '收起' : '展开更多'}
-                    </Button>
-                  )}
+                      className="env-value-toggle-btn"
+                      icon={revealedValueKeys[item.id] ? <IconEyeInvisible /> : <IconEye />}
+                      onClick={() => toggleValueVisibility(item.id)}
+                    />
+                  </div>
+                  <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                    {revealedValueKeys[item.id] ? '已临时显示当前变量值。' : '默认隐藏，点击眼睛图标可查看。'}
+                  </Typography.Text>
                 </div>
 
                 {(item.remark || item.tag) && (
@@ -279,7 +316,7 @@ const Env: React.FC = () => {
           data={envVars}
           loading={loading}
           pagination={{ pageSize: 10 }}
-          scroll={{ x: 1200 }}
+          tableLayoutFixed={false}
           rowKey="id"
         />
       )}
