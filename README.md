@@ -2,7 +2,7 @@
 [![Build and Push Docker Image](https://github.com/nnwc/XingShu/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/nnwc/XingShu/actions/workflows/docker-publish.yml)
 
 
-# 星枢 · Xingshu
+# 星枢 · XingShu
 
 <div align="center">
 
