@@ -26,12 +26,13 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      # ⬇️ 修改点：使用 Personal Access Token 登录
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          username: nnwc                          # 明确指定你的 GitHub 用户名
+          password: ${{ secrets.GHCR_PAT }}        # 使用 Personal Access Token
 
       - name: Extract Docker metadata
         id: meta
