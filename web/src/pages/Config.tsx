@@ -119,7 +119,7 @@ const Config: React.FC = () => {
     total: 0,
   });
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
-  const appVersion = useMemo(() => 'v1.5.0', []);
+  const appVersion = useMemo(() => 'v1.6.0', []);
   const appUpdatedAt = useMemo(() => '2026/04/09', []);
   const restoreFileInputRef = useRef<HTMLInputElement | null>(null);
 
