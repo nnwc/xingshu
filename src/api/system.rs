@@ -102,7 +102,6 @@ pub async fn get_webhook_config(
     let webhook_token = std::env::var("WEBHOOK_TOKEN").ok();
 
     Ok(Json(json!({
-        "configured": webhook_token.is_some(),
-        "token": webhook_token
+        "configured": webhook_token.is_some()
     })))
 }

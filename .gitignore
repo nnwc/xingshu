@@ -4,6 +4,8 @@
 *.db
 *.log
 .env
+_binary_backups/
+_config_backups/
 Cargo.lock
 .claude/
 node_modules/

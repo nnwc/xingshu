@@ -14,7 +14,7 @@ RUN cargo build --release
 
 COPY web ./web
 WORKDIR /build/web
-RUN npm install && npm run build
+RUN npm ci && npm run build
 
 FROM debian:stable-slim
 

@@ -54,19 +54,8 @@ impl AuthService {
     }
 
     fn jwt_secret_path() -> PathBuf {
-        if let Ok(database_url) = std::env::var("DATABASE_URL") {
-            if let Some(path) = database_url.strip_prefix("sqlite:///") {
-                let db_path = PathBuf::from(path);
-                if let Some(parent) = db_path.parent() {
-                    return parent.join("jwt_secret");
-                }
-            }
-        }
-
-        std::env::current_dir()
-            .unwrap_or_else(|_| PathBuf::from("."))
-            .join("data")
-            .join("jwt_secret")
+        let data_dir = std::env::var("DATA_DIR").unwrap_or_else(|_| "./data".to_string());
+        PathBuf::from(data_dir).join("jwt_secret")
     }
 
     pub fn set_config_service(&mut self, config_service: Arc<ConfigService>) {
