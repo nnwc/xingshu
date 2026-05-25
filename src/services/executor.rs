@@ -111,27 +111,61 @@ impl Executor {
         }
     }
 
+    fn clean_command_part(part: &str) -> String {
+        part.trim_matches(|c| c == '\'' || c == '"').to_string()
+    }
+
+    fn script_stem_from_path(path: &std::path::Path) -> String {
+        path.file_stem()
+            .and_then(|s| s.to_str())
+            .filter(|s| !s.is_empty())
+            .unwrap_or("script")
+            .to_string()
+    }
+
+    fn find_script_in_command(command: &str) -> Option<String> {
+        if command.lines().count() != 1 {
+            return None;
+        }
+
+        command
+            .trim()
+            .split_whitespace()
+            .map(Self::clean_command_part)
+            .find(|part| part.ends_with(".py") || part.ends_with(".js") || part.ends_with(".sh"))
+    }
+
+    fn output_working_directory_for_script(&self, script: &str) -> std::path::PathBuf {
+        let project_root = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
+        let scripts_dir = project_root.join("data/scripts");
+        let script_path = std::path::Path::new(script);
+        let full_script_path = if script_path.is_absolute() {
+            script_path.to_path_buf()
+        } else {
+            scripts_dir.join(script_path)
+        };
+        let script_stem = Self::script_stem_from_path(&full_script_path);
+        scripts_dir.join("outputs").join(script_stem)
+    }
+
     /// 根据任务获取工作目录
     fn get_working_directory(&self, task: &Task) -> std::path::PathBuf {
         let project_root = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
         let scripts_dir = project_root.join("data/scripts");
 
-        // 如果任务设置了自定义工作目录
+        // 如果任务设置了自定义工作目录，尊重用户设置
         if let Some(working_dir) = &task.working_dir {
             let working_dir = working_dir.trim();
             if !working_dir.is_empty() {
                 let path = std::path::Path::new(working_dir);
-                // 如果是绝对路径，直接使用
                 if path.is_absolute() {
                     return path.to_path_buf();
                 } else {
-                    // 相对路径，以 scripts 目录为基准
                     return scripts_dir.join(path);
                 }
             }
         }
 
-        // 没有设置工作目录，使用原有逻辑
         self.get_working_directory_from_command(&task.command)
     }
 
@@ -142,46 +176,10 @@ impl Executor {
 
         debug!("get_working_directory_from_command - command: {}", command);
 
-        // 检查是否是单行命令
-        if command.lines().count() != 1 {
-            debug!("Multi-line command, using scripts_dir");
-            return scripts_dir;
-        }
-
-        // 解析命令，提取脚本路径
-        let parts: Vec<&str> = command.trim().split_whitespace().collect();
-        debug!("Command parts: {:?}", parts);
-
-        if parts.is_empty() {
-            debug!("Empty command, using scripts_dir");
-            return scripts_dir;
-        }
-
-        // 查找脚本文件（从第一个参数开始查找，因为可能直接是脚本路径）
-        let script_path = parts.iter().find(|part| {
-            part.ends_with(".py") || part.ends_with(".js") || part.ends_with(".sh")
-        });
-
-        debug!("Found script_path: {:?}", script_path);
-
-        if let Some(script) = script_path {
-            let script_path = std::path::Path::new(script);
-
-            // 如果是绝对路径，返回脚本所在目录
-            if script_path.is_absolute() {
-                if let Some(parent) = script_path.parent() {
-                    debug!("Absolute path, parent: {:?}", parent);
-                    return parent.to_path_buf();
-                }
-            } else {
-                // 相对路径，以 scripts 为基础
-                let full_path = scripts_dir.join(script_path);
-                debug!("Relative path, full_path: {:?}", full_path);
-                if let Some(parent) = full_path.parent() {
-                    debug!("Returning parent: {:?}", parent);
-                    return parent.to_path_buf();
-                }
-            }
+        if let Some(script) = Self::find_script_in_command(command) {
+            let output_dir = self.output_working_directory_for_script(&script);
+            debug!("Using script output working directory: {:?}", output_dir);
+            return output_dir;
         }
 
         debug!("No script found, using scripts_dir");
@@ -233,23 +231,12 @@ impl Executor {
                             }
                         }
                     } else {
-                        // 工作目录不是 scripts，需要提取文件名
-                        if let Some(file_name) = script_path.file_name() {
-                            if let Some(name_str) = file_name.to_str() {
-                                // 如果是第一个参数（没有执行器），添加 ./
-                                let adjusted = if i == 0 {
-                                    if name_str.starts_with("./") {
-                                        name_str.to_string()
-                                    } else {
-                                        format!("./{}", name_str)
-                                    }
-                                } else {
-                                    name_str.to_string()
-                                };
-                                debug!("Adjusting {} to {}", part, adjusted);
-                                adjusted_parts[i] = adjusted;
-                            }
-                        }
+                        // 工作目录不是 scripts（默认是 outputs/<脚本名>），脚本参数必须转成绝对路径，
+                        // 这样脚本仍能被找到，而相对路径产物会落在输出区。
+                        let full_script_path = scripts_dir.join(script_path);
+                        let adjusted = full_script_path.to_string_lossy().to_string();
+                        debug!("Adjusting {} to absolute script path {}", part, adjusted);
+                        adjusted_parts[i] = adjusted;
                     }
                 }
                 break;
@@ -483,10 +470,14 @@ impl Executor {
         self.executions.write().await.insert(execution_id.clone(), exec_info);
 
         // 解析环境变量
-        let env_vars = self.parse_env().await;
+        let mut env_vars = self.parse_env().await;
 
         // 获取工作目录（提前计算，供前置、主命令、后置命令使用）
         let working_dir = self.get_working_directory(&task);
+        let output_dir = working_dir.to_string_lossy().to_string();
+        env_vars.insert("SCRIPT_OUTPUT_DIR".to_string(), output_dir.clone());
+        env_vars.insert("OUTPUT_DIR".to_string(), output_dir.clone());
+        env_vars.entry("DEFAULT_OUTPUT_DIR".to_string()).or_insert(output_dir);
 
         // 确保工作目录存在
         if !working_dir.exists() {
@@ -701,10 +692,14 @@ impl Executor {
         self.executions.write().await.insert(execution_id.clone(), exec_info);
 
         // 解析环境变量
-        let env_vars = self.parse_env().await;
+        let mut env_vars = self.parse_env().await;
 
         // 获取工作目录
         let working_dir = self.get_working_directory(&task);
+        let output_dir = working_dir.to_string_lossy().to_string();
+        env_vars.insert("SCRIPT_OUTPUT_DIR".to_string(), output_dir.clone());
+        env_vars.insert("OUTPUT_DIR".to_string(), output_dir.clone());
+        env_vars.entry("DEFAULT_OUTPUT_DIR".to_string()).or_insert(output_dir);
 
         // 确保工作目录存在
         if !working_dir.exists() {

@@ -122,9 +122,13 @@ impl ScriptService {
             .to_string()
     }
 
-    fn inject_script_output_env(env_vars: &mut HashMap<String, String>, base_path: &std::path::Path, script_path: &str) {
+    fn output_dir_for_script(base_path: &std::path::Path, script_path: &str) -> PathBuf {
         let script_name = Self::script_stem_from_path(script_path);
-        let outputs_dir = base_path.join("outputs").join(&script_name);
+        base_path.join("outputs").join(&script_name)
+    }
+
+    fn inject_script_output_env(env_vars: &mut HashMap<String, String>, base_path: &std::path::Path, script_path: &str) {
+        let outputs_dir = Self::output_dir_for_script(base_path, script_path);
         let outputs_dir_str = outputs_dir.to_string_lossy().to_string();
 
         env_vars.insert("SCRIPT_OUTPUT_DIR".to_string(), outputs_dir_str.clone());
@@ -398,8 +402,9 @@ impl ScriptService {
         // 生成执行ID
         let execution_id = uuid::Uuid::new_v4().to_string();
 
-        // 获取脚本所在目录作为工作目录
-        let working_dir = absolute_path.parent().ok_or_else(|| anyhow!("Invalid path"))?;
+        // 默认在输出区执行脚本，避免相对路径产物落到脚本目录
+        let working_dir = Self::output_dir_for_script(&self.base_path, path);
+        tokio::fs::create_dir_all(&working_dir).await?;
 
         // 根据文件扩展名选择执行方式
         let mut cmd = if path.ends_with(".sh") {
@@ -419,8 +424,8 @@ impl ScriptService {
             return Err(anyhow!("Unsupported file type"));
         };
 
-        // 设置工作目录为脚本所在目录
-        cmd.current_dir(working_dir);
+        // 设置工作目录为输出区；脚本本身通过绝对路径执行
+        cmd.current_dir(&working_dir);
         cmd.env_clear();
         let mut env_vars = self.parse_env(env_json).await;
         Self::inject_script_output_env(&mut env_vars, &self.base_path, path);
@@ -538,17 +543,13 @@ impl ScriptService {
             _ => return Err(anyhow!("Unsupported script type")),
         };
 
-        // 设置工作目录：如果提供了file_path，使用文件所在目录；否则使用脚本根目录
+        // 调试脚本也默认在对应输出区执行；未绑定具体文件时使用 outputs/debug
         let work_dir = if let Some(path) = file_path {
-            let file_full_path = self.base_path.join(path);
-            if let Some(parent) = file_full_path.parent() {
-                parent.to_path_buf()
-            } else {
-                self.base_path.clone()
-            }
+            Self::output_dir_for_script(&self.base_path, path)
         } else {
-            self.base_path.clone()
+            self.base_path.join("outputs").join("debug")
         };
+        tokio::fs::create_dir_all(&work_dir).await?;
 
         cmd.current_dir(&work_dir);
         cmd.env_clear();
