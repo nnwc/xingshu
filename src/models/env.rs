@@ -25,6 +25,7 @@ pub struct CreateEnvVar {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct UpdateEnvVar {
+    pub key: Option<String>,
     pub value: Option<String>,
     pub remark: Option<String>,
     pub tag: Option<String>,

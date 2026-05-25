@@ -81,10 +81,27 @@ impl EnvService {
 
     /// 更新环境变量
     pub async fn update(&self, id: i64, update: UpdateEnvVar) -> Result<Option<EnvVar>> {
+        if let Some(key) = &update.key {
+            let trimmed = key.trim();
+            if trimmed.is_empty() {
+                return Err(anyhow::anyhow!("环境变量名不能为空"));
+            }
+
+            if let Some(existing) = self.get_by_key(trimmed).await? {
+                if existing.id != id {
+                    return Err(anyhow::anyhow!("环境变量 '{}' 已存在", trimmed));
+                }
+            }
+        }
+
         let pool = self.pool.read().await;
         let mut query = String::from("UPDATE env_vars SET updated_at = ?");
         let mut has_update = false;
 
+        if update.key.is_some() {
+            query.push_str(", key = ?");
+            has_update = true;
+        }
         if update.value.is_some() {
             query.push_str(", value = ?");
             has_update = true;
@@ -111,6 +128,9 @@ impl EnvService {
 
         let mut q = sqlx::query(&query).bind(Utc::now());
 
+        if let Some(key) = &update.key {
+            q = q.bind(key.trim());
+        }
         if let Some(value) = &update.value {
             q = q.bind(value);
         }
