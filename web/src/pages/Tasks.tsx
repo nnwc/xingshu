@@ -113,7 +113,7 @@ const Tasks: React.FC = () => {
 
   // Webhook相关状态
   const [webhookVisible, setWebhookVisible] = useState(false);
-  const [webhookToken, setWebhookToken] = useState<string>('');
+  const [webhookConfigured, setWebhookConfigured] = useState(false);
   const [currentWebhookTaskId, setCurrentWebhookTaskId] = useState<number | null>(null);
   const [notificationChannels, setNotificationChannels] = useState<NotificationChannelConfig[]>([]);
   const [defaultAccountSplitDelimiter, setDefaultAccountSplitDelimiter] = useState('@');
@@ -138,7 +138,7 @@ const Tasks: React.FC = () => {
 
   useEffect(() => {
     loadGroups();
-    loadWebhookToken();
+    loadWebhookConfig();
     loadNotificationChannels();
     loadAccountRunnerDefaults();
 
@@ -253,17 +253,16 @@ const Tasks: React.FC = () => {
     }
   };
 
-  const loadWebhookToken = async () => {
+  const loadWebhookConfig = async () => {
     try {
       const token = localStorage.getItem('token');
       const res = await axios.get('/api/system/webhook-config', {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (res.data.configured && res.data.token) {
-        setWebhookToken(res.data.token);
-      }
+      setWebhookConfigured(!!res.data.configured);
     } catch (error) {
-      console.error('Failed to load webhook token:', error);
+      console.error('Failed to load webhook config:', error);
+      setWebhookConfigured(false);
     }
   };
 
@@ -874,7 +873,7 @@ const Tasks: React.FC = () => {
 
         const droplist = (
           <Menu>
-            {webhookToken && (
+            {webhookConfigured && (
               <Menu.Item key="webhook" onClick={() => showWebhookUrl(record.id)}>
                 <Space>
                   <IconLink />
@@ -946,7 +945,7 @@ const Tasks: React.FC = () => {
                 </Button>
               </Popconfirm>
             )}
-            {webhookToken && (
+            {webhookConfigured && (
               <Dropdown droplist={droplist} position="bl">
                 <Button type="text" size="small" icon={<IconMore />} className="tasks-action-more" />
               </Dropdown>
@@ -1760,9 +1759,9 @@ const Tasks: React.FC = () => {
           <div>
             <Typography.Text bold>使用方法:</Typography.Text>
             <Typography.Paragraph style={{ marginTop: 8 }}>
-              使用POST请求调用此URL，需要在请求头中添加：
+              Webhook 已配置。出于安全考虑，页面不再显示 WEBHOOK_TOKEN 原文；调用时请使用部署环境中配置的 WEBHOOK_TOKEN。
               <pre className="tasks-pre-block" style={{ padding: '8px', marginTop: 8 }}>
-                Authorization: Bearer {webhookToken}
+                Authorization: Bearer &lt;WEBHOOK_TOKEN&gt;
               </pre>
             </Typography.Paragraph>
           </div>
@@ -1771,7 +1770,7 @@ const Tasks: React.FC = () => {
             <pre className="tasks-pre-block" style={{ padding: '12px', marginTop: 8, overflow: 'auto' }}>
 {`curl -X POST \\
   ${currentWebhookTaskId ? `${window.location.origin}/api/webhook/tasks/${currentWebhookTaskId}/trigger` : ''} \\
-  -H "Authorization: Bearer ${webhookToken}"`}
+  -H "Authorization: Bearer <WEBHOOK_TOKEN>"`}
             </pre>
           </div>
         </Space>
