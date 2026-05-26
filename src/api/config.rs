@@ -258,6 +258,7 @@ pub async fn backup_now(
     let webdav_password = backup_config.webdav_password.clone();
     let remote_path = backup_config.remote_path.clone();
     let max_backups = backup_config.max_backups;
+    let config_service = state.config_service.clone();
 
     tokio::spawn(async move {
         use crate::scheduler::BackupScheduler;
@@ -273,8 +274,28 @@ pub async fn backup_now(
         )
         .await
         {
-            Ok(_) => info!("Manual backup completed successfully"),
-            Err(e) => error!("Manual backup failed: {}", e),
+            Ok(_) => {
+                info!("Manual backup completed successfully");
+                notifier::send_backup_notification(
+                    config_service.clone(),
+                    notifier::BackupNotificationData {
+                        status: "success".to_string(),
+                        message: "手动备份已完成".to_string(),
+                    },
+                )
+                .await;
+            }
+            Err(e) => {
+                error!("Manual backup failed: {}", e);
+                notifier::send_backup_notification(
+                    config_service.clone(),
+                    notifier::BackupNotificationData {
+                        status: "failed".to_string(),
+                        message: format!("手动备份失败: {}", e),
+                    },
+                )
+                .await;
+            }
         }
     });
 

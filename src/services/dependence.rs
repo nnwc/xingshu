@@ -161,33 +161,58 @@ impl DependenceService {
 
     /// 批量创建依赖
     pub async fn create_batch(&self, creates: Vec<CreateDependence>) -> Result<Vec<Dependence>> {
-        let now = Utc::now();
-        let mut deps = Vec::new();
+        if creates.is_empty() {
+            return Ok(Vec::new());
+        }
 
-        // 批量插入数据库
-        for create in creates {
-            // 检查依赖是否已存在（同名同类型）
-            let existing = sqlx::query_as::<_, Dependence>(
-                "SELECT * FROM dependences WHERE name = ? AND type = ?",
-            )
-            .bind(&create.name)
-            .bind(create.dep_type.to_i32())
-            .fetch_optional(&*self.pool.read().await)
-            .await?;
-
-            if existing.is_some() {
+        // 先完整校验，再统一插入，避免“前几条已入库、后面遇到重复导致接口失败”的半成功状态。
+        let mut seen = std::collections::HashSet::new();
+        for create in &creates {
+            let name = create.name.trim();
+            if name.is_empty() {
+                return Err(anyhow::anyhow!("依赖名称不能为空"));
+            }
+            let key = (name.to_string(), create.dep_type.to_i32());
+            if !seen.insert(key) {
                 return Err(anyhow::anyhow!(
-                    "依赖 '{}' (类型: {:?}) 已存在",
+                    "批量列表中存在重复依赖 '{}' (类型: {:?})",
                     create.name,
                     create.dep_type
                 ));
             }
+        }
 
+        {
+            let pool = self.pool.read().await;
+            for create in &creates {
+                let existing = sqlx::query_as::<_, Dependence>(
+                    "SELECT * FROM dependences WHERE name = ? AND type = ?",
+                )
+                .bind(create.name.trim())
+                .bind(create.dep_type.to_i32())
+                .fetch_optional(&*pool)
+                .await?;
+
+                if existing.is_some() {
+                    return Err(anyhow::anyhow!(
+                        "依赖 '{}' (类型: {:?}) 已存在",
+                        create.name,
+                        create.dep_type
+                    ));
+                }
+            }
+        }
+
+        let now = Utc::now();
+        let mut deps = Vec::new();
+
+        // 校验通过后再批量插入数据库。
+        for create in creates {
             let result = sqlx::query(
                 "INSERT INTO dependences (name, type, status, remark, created_at, updated_at)
                  VALUES (?, ?, ?, ?, ?, ?)",
             )
-            .bind(&create.name)
+            .bind(create.name.trim())
             .bind(create.dep_type.to_i32())
             .bind(DependenceStatus::Installing.to_i32())
             .bind(&create.remark)

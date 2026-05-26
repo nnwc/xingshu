@@ -701,6 +701,32 @@ impl ScriptService {
         Ok(())
     }
 
+    fn unpack_tar_safely<R: std::io::Read>(archive: &mut Archive<R>, target_dir: &std::path::Path) -> Result<()> {
+        for entry in archive.entries()? {
+            let mut entry = entry?;
+            let entry_path = entry.path()?;
+            let sanitized = entry_path
+                .components()
+                .try_fold(PathBuf::new(), |mut acc, component| {
+                    match component {
+                        std::path::Component::Normal(part) => {
+                            acc.push(part);
+                            Ok(acc)
+                        }
+                        _ => Err(anyhow!("Archive contains invalid path")),
+                    }
+                })?;
+
+            if sanitized.as_os_str().is_empty() {
+                continue;
+            }
+
+            entry.unpack(target_dir.join(sanitized))?;
+        }
+
+        Ok(())
+    }
+
     /// 解压 TAR.GZ 文件到指定目录
     pub async fn extract_tar_gz(&self, data: &[u8], target_path: &str) -> Result<()> {
         self.validate_path(target_path)?;
@@ -717,7 +743,7 @@ impl ScriptService {
             let cursor = Cursor::new(data_vec);
             let tar = GzDecoder::new(cursor);
             let mut archive = Archive::new(tar);
-            archive.unpack(&full_path_clone)?;
+            Self::unpack_tar_safely(&mut archive, &full_path_clone)?;
             Ok::<(), anyhow::Error>(())
         })
         .await??;
@@ -740,7 +766,7 @@ impl ScriptService {
         tokio::task::spawn_blocking(move || {
             let cursor = Cursor::new(data_vec);
             let mut archive = Archive::new(cursor);
-            archive.unpack(&full_path_clone)?;
+            Self::unpack_tar_safely(&mut archive, &full_path_clone)?;
             Ok::<(), anyhow::Error>(())
         })
         .await??;

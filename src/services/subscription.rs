@@ -1,4 +1,5 @@
 use crate::models::{CreateSubscription, CreateTask, CronInput, Subscription, UpdateSubscription};
+use crate::services::{notifier, ConfigService};
 use anyhow::Result;
 use chrono::Utc;
 use sqlx::SqlitePool;
@@ -9,14 +10,15 @@ use tokio::sync::RwLock;
 
 pub struct SubscriptionService {
     db_pool: Arc<RwLock<SqlitePool>>,
+    config_service: Arc<ConfigService>,
     base_path: PathBuf,
 }
 
 impl SubscriptionService {
-    pub fn new(db_pool: Arc<RwLock<SqlitePool>>, base_path: PathBuf) -> Self {
+    pub fn new(db_pool: Arc<RwLock<SqlitePool>>, config_service: Arc<ConfigService>, base_path: PathBuf) -> Self {
         // 克隆的仓库统一放到 scripts/git 目录下
         let git_path = base_path.join("git");
-        Self { db_pool, base_path: git_path }
+        Self { db_pool, config_service, base_path: git_path }
     }
 
     pub async fn list(&self) -> Result<Vec<Subscription>> {
@@ -134,9 +136,15 @@ impl SubscriptionService {
 
         // 删除订阅目录
         if let Some(sub) = sub {
-            let sub_dir = self.base_path.join(&sub.name);
+            let sub_dir = Self::subscription_dir(&self.base_path, sub.id, &sub.name);
             if sub_dir.exists() {
-                tokio::fs::remove_dir_all(sub_dir).await.ok();
+                tokio::fs::remove_dir_all(&sub_dir).await.ok();
+            }
+
+            // 兼容旧版本按订阅名称直接创建的目录，删除订阅时一并清理。
+            let legacy_dir = self.base_path.join(&sub.name);
+            if legacy_dir != sub_dir && legacy_dir.exists() {
+                tokio::fs::remove_dir_all(legacy_dir).await.ok();
             }
         }
 
@@ -168,11 +176,12 @@ impl SubscriptionService {
         // 克隆必要的数据用于异步任务
         let base_path = self.base_path.clone();
         let db_pool = self.db_pool.clone();
+        let config_service = self.config_service.clone();
 
         // 在后台异步执行 git 操作
         tokio::spawn(async move {
             tracing::info!("Background task started for subscription {}", id);
-            let result = Self::run_git_operation(id, sub, base_path, db_pool).await;
+            let result = Self::run_git_operation(id, sub, base_path, db_pool, config_service).await;
             match result {
                 Ok(_) => tracing::info!("Subscription {} completed successfully", id),
                 Err(e) => tracing::error!("Subscription {} run failed: {}", id, e),
@@ -188,6 +197,7 @@ impl SubscriptionService {
         sub: Subscription,
         base_path: PathBuf,
         db_pool: Arc<RwLock<SqlitePool>>,
+        config_service: Arc<ConfigService>,
     ) -> Result<()> {
         tracing::info!("run_git_operation started for subscription {}", id);
 
@@ -201,7 +211,12 @@ impl SubscriptionService {
 
         tracing::info!("Git directory ensured for subscription {}", id);
 
-        let sub_dir = base_path.join(&sub.name);
+        let sub_dir = Self::subscription_dir(&base_path, sub.id, &sub.name);
+        let sub_dir_name = sub_dir
+            .file_name()
+            .and_then(|name| name.to_str())
+            .unwrap_or_else(|| sub.name.as_str())
+            .to_string();
         let mut log = String::new();
 
         let result = if sub_dir.exists() {
@@ -249,12 +264,13 @@ impl SubscriptionService {
 
             if output.status.success() {
                 tracing::info!("Git pull succeeded for subscription {}", id);
-                let sync_summary = Self::sync_loader_tasks(&db_pool, &sub, &sub_dir).await?;
+                let sync_summary = Self::sync_loader_tasks(&db_pool, &sub, &sub_dir, &sub_dir_name).await?;
                 if !sync_summary.is_empty() {
                     log.push_str("\n\n");
                     log.push_str(&sync_summary);
                 }
                 let _ = Self::update_status(&db_pool, id, "success", Some(&log)).await;
+                Self::notify_subscription_result(config_service.clone(), id, &sub.name, "success", &log).await;
                 Ok(())
             } else {
                 tracing::error!("Git pull failed for subscription {}, exit code: {:?}", id, output.status.code());
@@ -262,31 +278,39 @@ impl SubscriptionService {
                 // 如果 pull 失败，尝试重置并重新拉取
                 log.push_str("\nPull failed, attempting to reset and retry...\n");
 
-                // 先重置到远程分支
-                let reset_output = Command::new("git")
-                    .args(&["-C", sub_dir.to_str().unwrap(), "reset", "--hard", &format!("origin/{}", sub.branch)])
-                    .output()
-                    .await;
+                // 先重置到远程分支。订阅未指定分支时无法可靠拼出 origin/<branch>，直接走重新克隆恢复。
+                if !sub.branch.trim().is_empty() {
+                    let reset_output = Command::new("git")
+                        .args(&["-C", sub_dir.to_str().unwrap(), "reset", "--hard", &format!("origin/{}", sub.branch)])
+                        .output()
+                        .await;
 
-                if let Ok(reset_out) = reset_output {
-                    log.push_str(&String::from_utf8_lossy(&reset_out.stdout));
-                    log.push_str(&String::from_utf8_lossy(&reset_out.stderr));
+                    if let Ok(reset_out) = reset_output {
+                        log.push_str(&String::from_utf8_lossy(&reset_out.stdout));
+                        log.push_str(&String::from_utf8_lossy(&reset_out.stderr));
 
-                    if reset_out.status.success() {
-                        // 重置成功，再次尝试 pull
-                        let retry_output = Command::new("git")
-                            .args(&["-C", sub_dir.to_str().unwrap(), "pull"])
-                            .output()
-                            .await;
+                        if reset_out.status.success() {
+                            // 重置成功，再次尝试 pull
+                            let retry_output = Command::new("git")
+                                .args(&["-C", sub_dir.to_str().unwrap(), "pull"])
+                                .output()
+                                .await;
 
-                        if let Ok(retry_out) = retry_output {
-                            log.push_str(&String::from_utf8_lossy(&retry_out.stdout));
-                            log.push_str(&String::from_utf8_lossy(&retry_out.stderr));
+                            if let Ok(retry_out) = retry_output {
+                                log.push_str(&String::from_utf8_lossy(&retry_out.stdout));
+                                log.push_str(&String::from_utf8_lossy(&retry_out.stderr));
 
-                            if retry_out.status.success() {
-                                tracing::info!("Git pull retry succeeded for subscription {}", id);
-                                let _ = Self::update_status(&db_pool, id, "success", Some(&log)).await;
-                                return Ok(());
+                                if retry_out.status.success() {
+                                    tracing::info!("Git pull retry succeeded for subscription {}", id);
+                                    let sync_summary = Self::sync_loader_tasks(&db_pool, &sub, &sub_dir, &sub_dir_name).await?;
+                                    if !sync_summary.is_empty() {
+                                        log.push_str("\n\n");
+                                        log.push_str(&sync_summary);
+                                    }
+                                    let _ = Self::update_status(&db_pool, id, "success", Some(&log)).await;
+                                    Self::notify_subscription_result(config_service.clone(), id, &sub.name, "success", &log).await;
+                                    return Ok(());
+                                }
                             }
                         }
                     }
@@ -316,7 +340,7 @@ impl SubscriptionService {
 
                     if clone_out.status.success() {
                         tracing::info!("Fresh clone succeeded for subscription {}", id);
-                        let sync_summary = Self::sync_loader_tasks(&db_pool, &sub, &sub_dir).await?;
+                        let sync_summary = Self::sync_loader_tasks(&db_pool, &sub, &sub_dir, &sub_dir_name).await?;
                         if !sync_summary.is_empty() {
                             log.push_str("\n\n");
                             log.push_str(&sync_summary);
@@ -327,6 +351,7 @@ impl SubscriptionService {
                 }
 
                 let _ = Self::update_status(&db_pool, id, "failed", Some(&log)).await;
+                Self::notify_subscription_result(config_service.clone(), id, &sub.name, "failed", &log).await;
                 Err(anyhow::anyhow!("Git pull failed and recovery attempts failed"))
             }
         } else {
@@ -363,21 +388,50 @@ impl SubscriptionService {
 
             if output.status.success() {
                 tracing::info!("Git clone succeeded for subscription {}", id);
-                let sync_summary = Self::sync_loader_tasks(&db_pool, &sub, &sub_dir).await?;
+                let sync_summary = Self::sync_loader_tasks(&db_pool, &sub, &sub_dir, &sub_dir_name).await?;
                 if !sync_summary.is_empty() {
                     log.push_str("\n\n");
                     log.push_str(&sync_summary);
                 }
                 let _ = Self::update_status(&db_pool, id, "success", Some(&log)).await;
+                Self::notify_subscription_result(config_service.clone(), id, &sub.name, "success", &log).await;
                 Ok(())
             } else {
                 tracing::error!("Git clone failed for subscription {}, exit code: {:?}", id, output.status.code());
                 let _ = Self::update_status(&db_pool, id, "failed", Some(&log)).await;
+                Self::notify_subscription_result(config_service.clone(), id, &sub.name, "failed", &log).await;
                 Err(anyhow::anyhow!("Git clone failed"))
             }
         };
 
         result
+    }
+
+    fn safe_dir_name(name: &str) -> String {
+        let mut output = String::new();
+        for ch in name.chars() {
+            if ch.is_ascii_alphanumeric() || matches!(ch, '-' | '_' | '.') {
+                output.push(ch);
+            } else if ch.is_whitespace() {
+                output.push('-');
+            }
+        }
+        let output = output.trim_matches(&['-', '.', '_'][..]).to_string();
+        if output.is_empty() { "subscription".to_string() } else { output }
+    }
+
+    fn subscription_dir(base_path: &Path, id: i64, name: &str) -> PathBuf {
+        base_path.join(format!("{}-{}", id, Self::safe_dir_name(name)))
+    }
+
+    async fn notify_subscription_result(config_service: Arc<ConfigService>, id: i64, name: &str, status: &str, log: &str) {
+        let preview: String = log.chars().take(1200).collect();
+        notifier::send_subscription_notification(config_service, notifier::SubscriptionNotificationData {
+            subscription_id: id,
+            subscription_name: name.to_string(),
+            status: status.to_string(),
+            log_preview: preview,
+        }).await;
     }
 
     async fn update_status(
@@ -434,7 +488,7 @@ impl SubscriptionService {
         Ok(subs)
     }
 
-    async fn sync_loader_tasks(db_pool: &Arc<RwLock<SqlitePool>>, sub: &Subscription, sub_dir: &Path) -> Result<String> {
+    async fn sync_loader_tasks(db_pool: &Arc<RwLock<SqlitePool>>, sub: &Subscription, sub_dir: &Path, sub_dir_name: &str) -> Result<String> {
         let mut read_dir = tokio::fs::read_dir(sub_dir).await?;
         let mut created = Vec::new();
         let mut skipped = Vec::new();
@@ -442,7 +496,6 @@ impl SubscriptionService {
         let import_group_id = Self::ensure_subscription_import_group(db_pool, &github_user).await?;
 
         while let Some(entry) = read_dir.next_entry().await? {
-            let path = entry.path();
             let file_type = entry.file_type().await?;
             if !file_type.is_file() {
                 continue;
@@ -454,7 +507,7 @@ impl SubscriptionService {
                 continue;
             }
 
-            let relative_path = format!("git/{}/{}", sub.name, file_name);
+            let relative_path = format!("git/{}/{}", sub_dir_name, file_name);
             let command = if file_name.ends_with(".py") {
                 format!("python3 {}", relative_path)
             } else if file_name.ends_with(".js") {

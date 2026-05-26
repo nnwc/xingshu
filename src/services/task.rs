@@ -99,112 +99,81 @@ impl TaskService {
     pub async fn update(&self, id: i64, update: UpdateTask) -> Result<Option<Task>> {
         let pool = self.pool.read().await;
         let mut query = String::from("UPDATE tasks SET updated_at = ?");
-        let mut params: Vec<String> = vec![Utc::now().to_rfc3339()];
 
-        if let Some(name) = &update.name {
+        if update.name.is_some() {
             query.push_str(", name = ?");
-            params.push(name.clone());
         }
-        if let Some(command) = &update.command {
+        if update.command.is_some() {
             query.push_str(", command = ?");
-            params.push(command.clone());
         }
-        if let Some(cron) = &update.cron {
+        if update.cron.is_some() {
             query.push_str(", cron = ?");
-            // 将 cron 数组序列化为 JSON 字符串
-            let cron_vec = match cron {
-                crate::models::CronInput::Single(s) => vec![s.clone()],
-                crate::models::CronInput::Multiple(v) => v.clone(),
-            };
-            params.push(serde_json::to_string(&cron_vec)?);
         }
-        if let Some(task_type) = &update.task_type {
+        if update.task_type.is_some() {
             query.push_str(", type = ?");
-            params.push(task_type.clone());
         }
-        if let Some(enabled) = update.enabled {
+        if update.enabled.is_some() {
             query.push_str(", enabled = ?");
-            params.push(enabled.to_string());
         }
-        if let Some(notify_enabled) = update.notify_enabled {
+        if update.notify_enabled.is_some() {
             query.push_str(", notify_enabled = ?");
-            params.push(notify_enabled.to_string());
         }
-        if let Some(notify_channel) = &update.notify_channel {
+        if update.notify_channel.is_some() {
             query.push_str(", notify_channel = ?");
-            params.push(notify_channel.clone());
         }
-        if let Some(notify_events) = &update.notify_events {
+        if update.notify_events.is_some() {
             query.push_str(", notify_events = ?");
-            params.push(serde_json::to_string(notify_events)?);
         }
-        if let Some(notify_attach_log) = update.notify_attach_log {
+        if update.notify_attach_log.is_some() {
             query.push_str(", notify_attach_log = ?");
-            params.push(notify_attach_log.to_string());
         }
-        if let Some(notify_log_limit) = update.notify_log_limit {
+        if update.notify_log_limit.is_some() {
             query.push_str(", notify_log_limit = ?");
-            params.push(notify_log_limit.to_string());
         }
-        if let Some(notify_log_mode) = &update.notify_log_mode {
+        if update.notify_log_mode.is_some() {
             query.push_str(", notify_log_mode = ?");
-            params.push(notify_log_mode.clone());
         }
-        if let Some(env) = &update.env {
+        if update.env.is_some() {
             query.push_str(", env = ?");
-            params.push(env.clone());
         }
-        if let Some(pre_command) = &update.pre_command {
+        if update.pre_command.is_some() {
             query.push_str(", pre_command = ?");
-            params.push(pre_command.clone());
         }
-        if let Some(post_command) = &update.post_command {
+        if update.post_command.is_some() {
             query.push_str(", post_command = ?");
-            params.push(post_command.clone());
         }
-        if let Some(group_id) = update.group_id {
+        if update.group_id.is_some() {
             query.push_str(", group_id = ?");
-            params.push(group_id.to_string());
         }
-        if let Some(working_dir) = &update.working_dir {
+        if update.working_dir.is_some() {
             query.push_str(", working_dir = ?");
-            params.push(working_dir.clone());
         }
-        if let Some(account_run_mode) = &update.account_run_mode {
+        if update.account_run_mode.is_some() {
             query.push_str(", account_run_mode = ?");
-            params.push(account_run_mode.clone());
         }
-        if let Some(account_env_key) = &update.account_env_key {
+        if update.account_env_key.is_some() {
             query.push_str(", account_env_key = ?");
-            params.push(account_env_key.clone());
         }
-        if let Some(account_split_delimiter) = &update.account_split_delimiter {
+        if update.account_split_delimiter.is_some() {
             query.push_str(", account_split_delimiter = ?");
-            params.push(account_split_delimiter.clone());
         }
-        if let Some(account_concurrency) = update.account_concurrency {
+        if update.account_concurrency.is_some() {
             query.push_str(", account_concurrency = ?");
-            params.push(account_concurrency.to_string());
         }
-        if let Some(schedule_mode) = &update.schedule_mode {
+        if update.schedule_mode.is_some() {
             query.push_str(", schedule_mode = ?");
-            params.push(schedule_mode.clone());
         }
-        if let Some(schedule_config) = &update.schedule_config {
+        if update.schedule_config.is_some() {
             query.push_str(", schedule_config = ?");
-            params.push(serde_json::to_string(schedule_config)?);
         }
-        if let Some(use_microwarp) = update.use_microwarp {
+        if update.use_microwarp.is_some() {
             query.push_str(", use_microwarp = ?");
-            params.push(use_microwarp.to_string());
         }
-        if let Some(microwarp_switch_ip_on_run) = update.microwarp_switch_ip_on_run {
+        if update.microwarp_switch_ip_on_run.is_some() {
             query.push_str(", microwarp_switch_ip_on_run = ?");
-            params.push(microwarp_switch_ip_on_run.to_string());
         }
 
         query.push_str(" WHERE id = ?");
-        params.push(id.to_string());
 
         let mut q = sqlx::query(&query).bind(Utc::now());
 
@@ -231,10 +200,11 @@ impl TaskService {
             q = q.bind(notify_enabled);
         }
         if let Some(notify_channel) = &update.notify_channel {
-            q = q.bind(notify_channel);
+            q = q.bind(notify_channel.clone());
         }
         if let Some(notify_events) = &update.notify_events {
-            q = q.bind(serde_json::to_string(notify_events)?);
+            let notify_events_json = notify_events.as_ref().map(serde_json::to_string).transpose()?;
+            q = q.bind(notify_events_json);
         }
         if let Some(notify_attach_log) = update.notify_attach_log {
             q = q.bind(notify_attach_log);
@@ -243,40 +213,41 @@ impl TaskService {
             q = q.bind(notify_log_limit);
         }
         if let Some(notify_log_mode) = &update.notify_log_mode {
-            q = q.bind(notify_log_mode);
+            q = q.bind(notify_log_mode.clone());
         }
         if let Some(env) = &update.env {
-            q = q.bind(env);
+            q = q.bind(env.clone());
         }
         if let Some(pre_command) = &update.pre_command {
-            q = q.bind(pre_command);
+            q = q.bind(pre_command.clone());
         }
         if let Some(post_command) = &update.post_command {
-            q = q.bind(post_command);
+            q = q.bind(post_command.clone());
         }
         if let Some(group_id) = update.group_id {
             q = q.bind(group_id);
         }
         if let Some(working_dir) = &update.working_dir {
-            q = q.bind(working_dir);
+            q = q.bind(working_dir.clone());
         }
         if let Some(account_run_mode) = &update.account_run_mode {
-            q = q.bind(account_run_mode);
+            q = q.bind(account_run_mode.clone());
         }
         if let Some(account_env_key) = &update.account_env_key {
-            q = q.bind(account_env_key);
+            q = q.bind(account_env_key.clone());
         }
         if let Some(account_split_delimiter) = &update.account_split_delimiter {
-            q = q.bind(account_split_delimiter);
+            q = q.bind(account_split_delimiter.clone());
         }
         if let Some(account_concurrency) = update.account_concurrency {
             q = q.bind(account_concurrency);
         }
         if let Some(schedule_mode) = &update.schedule_mode {
-            q = q.bind(schedule_mode);
+            q = q.bind(schedule_mode.clone());
         }
         if let Some(schedule_config) = &update.schedule_config {
-            q = q.bind(serde_json::to_string(schedule_config)?);
+            let schedule_config_json = schedule_config.as_ref().map(serde_json::to_string).transpose()?;
+            q = q.bind(schedule_config_json);
         }
         if let Some(use_microwarp) = update.use_microwarp {
             q = q.bind(use_microwarp);

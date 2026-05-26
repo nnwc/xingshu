@@ -108,8 +108,8 @@ async fn main() -> Result<()> {
     let script_service = Arc::new(ScriptService::new(scripts_dir.clone(), env_service.clone()));
     let dependence_service = Arc::new(DependenceService::new(shared_pool.clone()));
     let task_group_service = Arc::new(TaskGroupService::new(shared_pool.clone()));
-    let subscription_service = Arc::new(SubscriptionService::new(shared_pool.clone(), scripts_dir.clone()));
     let config_service = Arc::new(ConfigService::new(shared_pool.clone()));
+    let subscription_service = Arc::new(SubscriptionService::new(shared_pool.clone(), config_service.clone(), scripts_dir.clone()));
     let user_service = Arc::new(UserService::new(shared_pool.clone()));
     let mut auth_service = AuthService::new(user_service.clone())?;
     auth_service.set_config_service(config_service.clone());
@@ -328,6 +328,37 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
+
+fn backup_entry_target(parent_dir: &std::path::Path, entry_path: &std::path::Path) -> Option<std::path::PathBuf> {
+    let mut components = entry_path.components();
+    match components.next() {
+        Some(std::path::Component::Normal(first)) if first == "data" => {}
+        _ => return None,
+    }
+
+    let mut relative = std::path::PathBuf::from("data");
+    for component in components {
+        match component {
+            std::path::Component::Normal(part) => relative.push(part),
+            _ => return None,
+        }
+    }
+
+    Some(parent_dir.join(relative))
+}
+
+fn extract_backup_archive<R: std::io::Read>(archive: &mut tar::Archive<R>, parent_dir: &std::path::Path) -> std::io::Result<()> {
+    for entry in archive.entries()? {
+        let mut entry = entry?;
+        let path = entry.path()?.into_owned();
+        let Some(target) = backup_entry_target(parent_dir, &path) else {
+            continue;
+        };
+        entry.unpack(target)?;
+    }
+    Ok(())
+}
+
 async fn restore_latest_backup(
     backup_config: &models::config::AutoBackupConfig,
     data_dir: &PathBuf,
@@ -381,7 +412,7 @@ async fn restore_latest_backup(
     let mut archive = Archive::new(decoder);
 
     let parent_dir = data_dir.parent().unwrap_or(std::path::Path::new("."));
-    archive.unpack(parent_dir)?;
+    extract_backup_archive(&mut archive, parent_dir)?;
 
     // 删除临时文件
     let _ = tokio::fs::remove_file(&temp_file).await;

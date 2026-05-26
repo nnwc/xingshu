@@ -7,6 +7,7 @@ use axum::{
 };
 use flate2::{write::GzEncoder, read::GzDecoder, Compression};
 use serde_json::json;
+use std::path::{Component, Path, PathBuf};
 use std::sync::Arc;
 use tar::{Archive, Builder};
 use tokio::fs;
@@ -44,6 +45,37 @@ async fn fix_permissions(dir: &str) -> std::io::Result<()> {
 #[cfg(not(unix))]
 async fn fix_permissions(_dir: &str) -> std::io::Result<()> {
     // Windows 不需要修改权限
+    Ok(())
+}
+
+
+fn backup_entry_target(parent_dir: &Path, entry_path: &Path) -> Option<PathBuf> {
+    let mut components = entry_path.components();
+    match components.next() {
+        Some(Component::Normal(first)) if first == "data" => {}
+        _ => return None,
+    }
+
+    let mut relative = PathBuf::from("data");
+    for component in components {
+        match component {
+            Component::Normal(part) => relative.push(part),
+            _ => return None,
+        }
+    }
+
+    Some(parent_dir.join(relative))
+}
+
+fn extract_backup_archive<R: std::io::Read>(archive: &mut Archive<R>, parent_dir: &Path) -> std::io::Result<()> {
+    for entry in archive.entries()? {
+        let mut entry = entry?;
+        let path = entry.path()?.into_owned();
+        let Some(target) = backup_entry_target(parent_dir, &path) else {
+            continue;
+        };
+        entry.unpack(target)?;
+    }
     Ok(())
 }
 
@@ -298,7 +330,7 @@ pub async fn restore_backup(
     info!("Extracting backup to: {}", parent_dir);
     let extract_path = std::path::Path::new(parent_dir);
 
-    if let Err(e) = archive.unpack(extract_path) {
+    if let Err(e) = extract_backup_archive(&mut archive, extract_path) {
         error!("Failed to extract backup: {}", e);
         // 清理临时文件
         let _ = fs::remove_file(&uploaded_backup_path).await;

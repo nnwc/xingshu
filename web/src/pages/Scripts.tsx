@@ -155,7 +155,7 @@ const Scripts: React.FC = () => {
       const token = localStorage.getItem('token');
       const folderPath = currentPath ? `${currentPath}/${values.name}` : values.name;
 
-      await axios.post(`/api/scripts/directories/${folderPath}`, null, {
+      await axios.post(`/api/scripts/directories/${encodeScriptPath(folderPath)}`, null, {
         headers: { Authorization: `Bearer ${token}` },
       });
 

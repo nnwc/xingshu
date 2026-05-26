@@ -1,4 +1,4 @@
-use crate::services::{ConfigService, WebDavClient};
+use crate::services::{notifier, ConfigService, WebDavClient};
 use anyhow::Result;
 use flate2::write::GzEncoder;
 use flate2::Compression;
@@ -75,6 +75,7 @@ impl BackupScheduler {
         let webdav_password = backup_config.webdav_password.clone();
         let remote_path = backup_config.remote_path.clone();
         let max_backups = backup_config.max_backups;
+        let config_service = self.config_service.clone();
 
         match Job::new_async_tz(cron_expr.as_str(), chrono::Local, move |_uuid, _l| {
             let url = webdav_url.clone();
@@ -82,13 +83,33 @@ impl BackupScheduler {
             let password = webdav_password.clone();
             let path = remote_path.clone();
             let max = max_backups;
+            let config_service = config_service.clone();
 
             Box::pin(async move {
                 info!("Running scheduled backup...");
-                if let Err(e) = Self::perform_backup(&url, &username, &password, path.as_deref(), max).await {
-                    error!("Failed to perform scheduled backup: {}", e);
-                } else {
-                    info!("Scheduled backup completed successfully");
+                match Self::perform_backup(&url, &username, &password, path.as_deref(), max).await {
+                    Ok(_) => {
+                        info!("Scheduled backup completed successfully");
+                        notifier::send_backup_notification(
+                            config_service.clone(),
+                            notifier::BackupNotificationData {
+                                status: "success".to_string(),
+                                message: "自动备份已完成".to_string(),
+                            },
+                        )
+                        .await;
+                    }
+                    Err(e) => {
+                        error!("Failed to perform scheduled backup: {}", e);
+                        notifier::send_backup_notification(
+                            config_service.clone(),
+                            notifier::BackupNotificationData {
+                                status: "failed".to_string(),
+                                message: format!("自动备份失败: {}", e),
+                            },
+                        )
+                        .await;
+                    }
                 }
             })
         }) {
