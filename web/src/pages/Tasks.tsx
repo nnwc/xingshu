@@ -107,6 +107,7 @@ const Tasks: React.FC = () => {
   const [isLiveLog, setIsLiveLog] = useState(false);
   const [currentViewTask, setCurrentViewTask] = useState<Task | null>(null);
   const [elapsedTime, setElapsedTime] = useState<number>(0);
+  const [runningExecutionMap, setRunningExecutionMap] = useState<Record<number, { execution_id: string; started_at?: string }>>({});
   const eventSourceRef = useRef<EventSource | null>(null);
   const runningTasksEventSourceRef = useRef<EventSource | null>(null);
   const timerRef = useRef<number | null>(null);
@@ -160,15 +161,33 @@ const Tasks: React.FC = () => {
           // 更新运行中任务列表
           setRunningTasks(new Set<number>(update.running_ids));
 
-          // 如果任务开始，立即更新执行时间为当前时间（不显示耗时）
+          // 如果任务开始，立即更新执行时间为当前时间（不显示耗时），并缓存 execution_id，点开日志时少一次请求
           if (update.change_type === 'started' && update.changed_task_id) {
+            const startedAt = update.last_run_at || new Date().toISOString();
+            if (update.execution_id) {
+              setRunningExecutionMap(prev => ({
+                ...prev,
+                [update.changed_task_id]: {
+                  execution_id: update.execution_id,
+                  started_at: startedAt,
+                },
+              }));
+            }
             setTasks(prevTasks =>
               prevTasks.map(t =>
                 t.id === update.changed_task_id
-                  ? { ...t, last_run_at: new Date().toISOString(), last_run_duration: undefined }
+                  ? { ...t, last_run_at: startedAt, last_run_duration: undefined }
                   : t
               )
             );
+          }
+
+          if (update.change_type === 'finished' && update.changed_task_id) {
+            setRunningExecutionMap(prev => {
+              const next = { ...prev };
+              delete next[update.changed_task_id];
+              return next;
+            });
           }
 
           // 如果任务结束且包含任务数据，直接更新本地状态
@@ -650,15 +669,20 @@ const Tasks: React.FC = () => {
 
         // 先获取最近的执行记录
         try {
-          const executions: any = await taskApi.listExecutions();
+          const cachedExecution = runningExecutionMap[task.id];
+          const currentExecution = cachedExecution || (() => null)();
+          let resolvedExecution = currentExecution;
 
-          // 找到该任务的执行记录（ExecutionInfo没有status字段，直接找task_id匹配的）
-          const currentExecution = executions.find((e: any) => e.task_id === task.id);
+          if (!resolvedExecution) {
+            const executions: any = await taskApi.listExecutions();
+            // 找到该任务的执行记录（ExecutionInfo没有status字段，直接找task_id匹配的）
+            resolvedExecution = executions.find((e: any) => e.task_id === task.id);
+          }
 
-          if (currentExecution) {
+          if (resolvedExecution) {
             // 启动实时耗时计时器 - 使用执行记录的开始时间。
             // 兼容后端返回带时区 UTC 或不带时区的本地时间；选择不在未来且最接近当前时间的候选。
-            const startedAt = String(currentExecution.started_at || '');
+            const startedAt = String(resolvedExecution.started_at || '');
             const now = Date.now();
             const hasTimezone = /[zZ]|[+-]\d{2}:?\d{2}$/.test(startedAt);
             const timestampCandidates = [
@@ -679,7 +703,7 @@ const Tasks: React.FC = () => {
 
             // 连接SSE获取实时日志
             const token = localStorage.getItem('token');
-            const url = `/api/executions/${currentExecution.execution_id}/logs${token ? `?token=${token}` : ''}`;
+            const url = `/api/executions/${resolvedExecution.execution_id}/logs${token ? `?token=${token}` : ''}`;
 
             setLogContent('[正在连接日志流...]\n');
             // 不等待 SSE onopen 才解除加载态；先展示弹窗内容，避免用户感觉点开日志卡住。

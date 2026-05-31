@@ -98,6 +98,8 @@ pub struct RunningTasksUpdate {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub task_data: Option<serde_json::Value>, // 任务结束时包含更新后的任务数据
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub execution_id: Option<String>, // 任务开始时包含执行ID，前端可直接订阅日志
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub last_run_at: Option<chrono::DateTime<chrono::Utc>>, // 任务执行时间
     #[serde(skip_serializing_if = "Option::is_none")]
     pub last_run_duration: Option<i64>, // 任务执行耗时（毫秒）
@@ -670,6 +672,7 @@ impl Executor {
             changed_task_id: task.id,
             change_type: "finished".to_string(),
             task_data: None,
+            execution_id: None,
             last_run_at: started_at,
             last_run_duration: Some(duration),
         };
@@ -753,6 +756,7 @@ impl Executor {
             changed_task_id: task.id,
             change_type: "started".to_string(),
             task_data: None,
+            execution_id: Some(execution_id.clone()),
             last_run_at: None,
             last_run_duration: None,
         };
@@ -853,6 +857,7 @@ impl Executor {
                 changed_task_id: task_id,
                 change_type: "finished".to_string(),
                 task_data: None,
+                execution_id: None,
                 last_run_at: started_at,
                 last_run_duration: duration,
             };
@@ -950,6 +955,7 @@ impl Executor {
                             changed_task_id: task_id,
                             change_type: "finished".to_string(),
                             task_data: None,
+                            execution_id: None,
                             last_run_at: Some(info.started_at),
                             last_run_duration: Some(duration),
                         };
@@ -1173,6 +1179,7 @@ impl Executor {
             changed_task_id: task.id,
             change_type: "started".to_string(),
             task_data: None,
+            execution_id: Some(execution_id.to_string()),
             last_run_at: None,
             last_run_duration: None,
         });
@@ -1243,6 +1250,7 @@ impl Executor {
             changed_task_id: task.id,
             change_type: "finished".to_string(),
             task_data: None,
+            execution_id: None,
             last_run_at: None,
             last_run_duration: None,
         });
