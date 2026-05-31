@@ -656,13 +656,26 @@ const Tasks: React.FC = () => {
           const currentExecution = executions.find((e: any) => e.task_id === task.id);
 
           if (currentExecution) {
-            // 启动实时耗时计时器 - 使用执行记录的开始时间
-            const startTimestamp = new Date(currentExecution.started_at).getTime();
-            setElapsedTime(Date.now() - startTimestamp);
+            // 启动实时耗时计时器 - 使用执行记录的开始时间。
+            // 兼容后端返回带时区 UTC 或不带时区的本地时间；选择不在未来且最接近当前时间的候选。
+            const startedAt = String(currentExecution.started_at || '');
+            const now = Date.now();
+            const hasTimezone = /[zZ]|[+-]\d{2}:?\d{2}$/.test(startedAt);
+            const timestampCandidates = [
+              new Date(startedAt).getTime(),
+              hasTimezone ? Number.NaN : new Date(`${startedAt}Z`).getTime(),
+              task.last_run_at ? new Date(task.last_run_at).getTime() : Number.NaN,
+            ].filter((value) => Number.isFinite(value) && value <= now + 5000);
+            const startTimestamp = timestampCandidates.length > 0
+              ? Math.max(...timestampCandidates)
+              : now;
 
-            timerRef.current = setInterval(() => {
-              setElapsedTime(Date.now() - startTimestamp);
-            }, 100);
+            const updateElapsedTime = () => {
+              setElapsedTime(Math.max(0, Date.now() - startTimestamp));
+            };
+
+            updateElapsedTime();
+            timerRef.current = window.setInterval(updateElapsedTime, 100);
 
             // 连接SSE获取实时日志
             const token = localStorage.getItem('token');
