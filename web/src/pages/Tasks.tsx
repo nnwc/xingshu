@@ -682,6 +682,8 @@ const Tasks: React.FC = () => {
             const url = `/api/executions/${currentExecution.execution_id}/logs${token ? `?token=${token}` : ''}`;
 
             setLogContent('[正在连接日志流...]\n');
+            // 不等待 SSE onopen 才解除加载态；先展示弹窗内容，避免用户感觉点开日志卡住。
+            setLogLoading(false);
 
             const eventSource = new EventSource(url);
             eventSourceRef.current = eventSource;
@@ -696,7 +698,6 @@ const Tasks: React.FC = () => {
 
             eventSource.onopen = () => {
               clearTimeout(connectTimeout);
-              setLogLoading(false);
               setLogContent(prev => prev.replace('[正在连接日志流...]\n', '[日志流已连接]\n'));
             };
 
