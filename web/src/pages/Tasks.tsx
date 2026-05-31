@@ -735,13 +735,14 @@ const Tasks: React.FC = () => {
         // 历史日志 - 直接获取最后一次执行的日志详情
         setIsLiveLog(false);
 
+        setLogLoading(false);
+        setLogContent('[正在加载历史日志...]\n');
+
         try {
           const logDetail = await logApi.getLatestByTask(task.id);
-          setLogLoading(false);
           const startTime = new Date(logDetail.created_at).toLocaleString('zh-CN');
           setLogContent(`[任务开始时间: ${startTime}]\n${logDetail.output || '无日志输出'}`);
         } catch (error: any) {
-          setLogLoading(false);
           if (error.response?.status === 404) {
             setLogContent('暂无执行日志');
           } else {

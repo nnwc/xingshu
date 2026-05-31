@@ -122,6 +122,10 @@ pub async fn init_db(database_url: &str) -> Result<SqlitePool> {
         .execute(&pool)
         .await?;
 
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_logs_task_created_at ON logs(task_id, created_at DESC)")
+        .execute(&pool)
+        .await?;
+
     sqlx::query("CREATE INDEX IF NOT EXISTS idx_logs_created_at ON logs(created_at)")
         .execute(&pool)
         .await?;
