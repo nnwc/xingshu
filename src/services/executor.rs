@@ -7,7 +7,7 @@ use serde::Serialize;
 use std::collections::HashMap;
 use std::process::Stdio;
 use std::sync::Arc;
-use tokio::io::{AsyncBufReadExt, AsyncReadExt, BufReader};
+use tokio::io::{AsyncReadExt, BufReader};
 use tokio::process::Command;
 use tokio::sync::{broadcast, RwLock};
 use futures::future::join_all;
@@ -29,11 +29,29 @@ impl<R: AsyncReadExt + Unpin> LineReader<R> {
     }
 
     async fn next_line(&mut self) -> std::io::Result<Option<String>> {
-        self.buffer.clear();
-
         loop {
             let mut byte = [0u8; 1];
-            match self.reader.read(&mut byte).await? {
+            let bytes_read = if self.buffer.is_empty() {
+                self.reader.read(&mut byte).await?
+            } else {
+                match tokio::time::timeout(
+                    std::time::Duration::from_millis(200),
+                    self.reader.read(&mut byte),
+                )
+                .await
+                {
+                    Ok(result) => result?,
+                    Err(_) => {
+                        // Some programs flush partial progress without a trailing newline.
+                        // Emit the buffered chunk periodically so the UI can update live.
+                        let line = String::from_utf8_lossy(&self.buffer).to_string();
+                        self.buffer.clear();
+                        return Ok(Some(line));
+                    }
+                }
+            };
+
+            match bytes_read {
                 0 => {
                     // EOF
                     if self.buffer.is_empty() {
@@ -44,22 +62,20 @@ impl<R: AsyncReadExt + Unpin> LineReader<R> {
                         return Ok(Some(line));
                     }
                 }
-                _ => {
-                    match byte[0] {
-                        b'\n' | b'\r' => {
-                            // 遇到 \n 或 \r，返回当前行
-                            if !self.buffer.is_empty() {
-                                let line = String::from_utf8_lossy(&self.buffer).to_string();
-                                self.buffer.clear();
-                                return Ok(Some(line));
-                            }
-                            // 如果 buffer 为空，继续读取下一个字符
+                _ => match byte[0] {
+                    b'\n' | b'\r' => {
+                        // Treat both \n and \r as log delimiters; \r is common for progress bars.
+                        if !self.buffer.is_empty() {
+                            let line = String::from_utf8_lossy(&self.buffer).to_string();
+                            self.buffer.clear();
+                            return Ok(Some(line));
                         }
-                        _ => {
-                            self.buffer.push(byte[0]);
-                        }
+                        // If buffer is empty, continue reading the next byte.
                     }
-                }
+                    _ => {
+                        self.buffer.push(byte[0]);
+                    }
+                },
             }
         }
     }
