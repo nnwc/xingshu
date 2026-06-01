@@ -1,0 +1,51 @@
+<svg width="1280" height="620" viewBox="0 0 1280 620" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1280" y2="620"><stop stop-color="#F8FAFC"/><stop offset="1" stop-color="#EFF6FF"/></linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#1E293B" flood-opacity="0.12"/></filter>
+    <style>.title{font:700 30px 'Noto Sans SC','Microsoft YaHei',sans-serif;fill:#0F172A}.body{font:500 20px 'Noto Sans SC','Microsoft YaHei',sans-serif;fill:#475569}.small{font:600 18px 'Noto Sans SC','Microsoft YaHei',sans-serif;fill:#2563EB}</style>
+  </defs>
+  <rect width="1280" height="620" rx="34" fill="url(#bg)"/>
+  <text x="70" y="78" class="title">星枢如何工作</text>
+  <text x="70" y="118" class="body">把分散在服务器上的脚本、环境变量、调度规则、日志和通知，收拢到一个中文控制台。</text>
+
+  <g filter="url(#shadow)">
+    <rect x="70" y="190" width="230" height="190" rx="28" fill="#FFFFFF"/>
+    <rect x="94" y="214" width="56" height="56" rx="18" fill="#DBEAFE"/>
+    <text x="170" y="249" class="title" font-size="25">任务</text>
+    <text x="94" y="306" class="body">定时 / 手动 / 开机</text>
+    <text x="94" y="342" class="body">前置与后置命令</text>
+  </g>
+
+  <path d="M320 285H430" stroke="#60A5FA" stroke-width="4" stroke-linecap="round"/>
+  <path d="M430 285L410 273V297L430 285Z" fill="#60A5FA"/>
+
+  <g filter="url(#shadow)">
+    <rect x="450" y="150" width="380" height="270" rx="34" fill="#0F172A"/>
+    <text x="532" y="220" fill="#F8FAFC" font-family="Noto Sans SC, Microsoft YaHei, sans-serif" font-size="36" font-weight="800">星枢控制台</text>
+    <text x="532" y="270" fill="#BAE6FD" font-family="Noto Sans SC, Microsoft YaHei, sans-serif" font-size="22" font-weight="600">统一调度 · 统一执行 · 统一追踪</text>
+    <rect x="532" y="312" width="215" height="18" rx="9" fill="#38BDF8" fill-opacity="0.75"/>
+    <rect x="532" y="352" width="255" height="18" rx="9" fill="#818CF8" fill-opacity="0.65"/>
+  </g>
+
+  <path d="M850 285H960" stroke="#60A5FA" stroke-width="4" stroke-linecap="round"/>
+  <path d="M960 285L940 273V297L960 285Z" fill="#60A5FA"/>
+
+  <g filter="url(#shadow)">
+    <rect x="980" y="168" width="230" height="224" rx="28" fill="#FFFFFF"/>
+    <rect x="1004" y="194" width="56" height="56" rx="18" fill="#DCFCE7"/>
+    <text x="1080" y="229" class="title" font-size="25">结果</text>
+    <text x="1004" y="288" class="body">实时日志</text>
+    <text x="1004" y="324" class="body">通知推送</text>
+    <text x="1004" y="360" class="body">历史追踪</text>
+  </g>
+
+  <g transform="translate(110 470)">
+    <rect width="1060" height="80" rx="24" fill="#FFFFFF" stroke="#DBEAFE"/>
+    <text x="34" y="50" class="small">脚本文件</text>
+    <text x="194" y="50" class="small">环境变量</text>
+    <text x="374" y="50" class="small">订阅同步</text>
+    <text x="554" y="50" class="small">MicroWARP</text>
+    <text x="754" y="50" class="small">备份恢复</text>
+    <text x="924" y="50" class="small">系统配置</text>
+  </g>
+</svg>

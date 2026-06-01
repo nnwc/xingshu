@@ -1,0 +1,40 @@
+<svg width="1280" height="540" viewBox="0 0 1280 540" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1280" y2="540"><stop stop-color="#07111F"/><stop offset="1" stop-color="#172554"/></linearGradient>
+    <style>.h{font:800 30px 'Noto Sans SC','Microsoft YaHei',sans-serif;fill:#F8FAFC}.t{font:600 21px 'Noto Sans SC','Microsoft YaHei',sans-serif;fill:#DBEAFE}.n{font:800 28px Inter, sans-serif;fill:#7DD3FC}.card{fill:#FFFFFF;fill-opacity:.09;stroke:#BFDBFE;stroke-opacity:.22}</style>
+  </defs>
+  <rect width="1280" height="540" rx="34" fill="url(#bg)"/>
+  <text x="70" y="78" class="h">从创建任务到收到通知</text>
+  <text x="70" y="118" class="t">一个典型自动化流程，可以在星枢里按下面的方式完成。</text>
+
+  <g transform="translate(70 190)">
+    <rect class="card" width="190" height="190" rx="28"/>
+    <text x="28" y="58" class="n">01</text>
+    <text x="28" y="112" class="h" font-size="25">准备脚本</text>
+    <text x="28" y="152" class="t">上传或编辑脚本</text>
+  </g>
+  <path d="M280 285H350" stroke="#60A5FA" stroke-width="4" stroke-linecap="round"/><path d="M350 285L330 273V297L350 285Z" fill="#60A5FA"/>
+
+  <g transform="translate(370 190)">
+    <rect class="card" width="190" height="190" rx="28"/>
+    <text x="28" y="58" class="n">02</text>
+    <text x="28" y="112" class="h" font-size="25">配置任务</text>
+    <text x="28" y="152" class="t">命令 / 周期 / 环境</text>
+  </g>
+  <path d="M580 285H650" stroke="#60A5FA" stroke-width="4" stroke-linecap="round"/><path d="M650 285L630 273V297L650 285Z" fill="#60A5FA"/>
+
+  <g transform="translate(670 190)">
+    <rect class="card" width="190" height="190" rx="28"/>
+    <text x="28" y="58" class="n">03</text>
+    <text x="28" y="112" class="h" font-size="25">执行追踪</text>
+    <text x="28" y="152" class="t">实时日志与状态</text>
+  </g>
+  <path d="M880 285H950" stroke="#60A5FA" stroke-width="4" stroke-linecap="round"/><path d="M950 285L930 273V297L950 285Z" fill="#60A5FA"/>
+
+  <g transform="translate(970 190)">
+    <rect class="card" width="240" height="190" rx="28"/>
+    <text x="28" y="58" class="n">04</text>
+    <text x="28" y="112" class="h" font-size="25">通知与沉淀</text>
+    <text x="28" y="152" class="t">推送结果，保留日志</text>
+  </g>
+</svg>
