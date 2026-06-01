@@ -21,10 +21,14 @@
 
   <g filter="url(#shadow)">
     <rect x="450" y="150" width="380" height="270" rx="34" fill="#0F172A"/>
-    <text x="532" y="220" fill="#F8FAFC" font-family="Noto Sans SC, Microsoft YaHei, sans-serif" font-size="36" font-weight="800">星枢控制台</text>
-    <text x="532" y="270" fill="#BAE6FD" font-family="Noto Sans SC, Microsoft YaHei, sans-serif" font-size="22" font-weight="600">统一调度 · 统一执行 · 统一追踪</text>
-    <rect x="532" y="312" width="215" height="18" rx="9" fill="#38BDF8" fill-opacity="0.75"/>
-    <rect x="532" y="352" width="255" height="18" rx="9" fill="#818CF8" fill-opacity="0.65"/>
+    <text x="640" y="218" fill="#F8FAFC" font-family="Noto Sans SC, Microsoft YaHei, sans-serif" font-size="36" font-weight="800" text-anchor="middle">星枢控制台</text>
+    <g transform="translate(518 248)">
+      <rect width="244" height="38" rx="19" fill="#FFFFFF" fill-opacity="0.08" stroke="#7DD3FC" stroke-opacity="0.22"/>
+      <text x="122" y="25" fill="#BAE6FD" font-family="Noto Sans SC, Microsoft YaHei, sans-serif" font-size="19" font-weight="700" text-anchor="middle">统一调度 · 统一执行</text>
+    </g>
+    <text x="640" y="319" fill="#C7D2FE" font-family="Noto Sans SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="600" text-anchor="middle">统一追踪每一次自动化结果</text>
+    <rect x="532" y="350" width="215" height="18" rx="9" fill="#38BDF8" fill-opacity="0.75"/>
+    <rect x="532" y="382" width="255" height="18" rx="9" fill="#818CF8" fill-opacity="0.65"/>
   </g>
 
   <path d="M850 285H960" stroke="#60A5FA" stroke-width="4" stroke-linecap="round"/>
