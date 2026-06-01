@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="https://github.com/nnwc/xingshu/actions/workflows/docker-publish.yml"><img src="https://github.com/nnwc/xingshu/actions/workflows/docker-publish.yml/badge.svg" alt="Build and Push Docker Image" /></a>
-  <img src="https://img.shields.io/badge/version-v1.6.0-blue" alt="Version" />
+  <img src="https://img.shields.io/badge/version-v1.9.0-blue" alt="Version" />
   <img src="https://img.shields.io/badge/Rust-Axum-orange" alt="Rust Axum" />
   <img src="https://img.shields.io/badge/React-TypeScript-61DAFB" alt="React TypeScript" />
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License" />
